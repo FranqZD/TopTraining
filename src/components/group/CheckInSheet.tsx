@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Loader2, Send } from 'lucide-react'
-import { Avatar, Card, CardLabel, DayMark, Sheet } from '../ui'
+import { useNavigate } from 'react-router'
+import { Loader2, Pencil, Send } from 'lucide-react'
+import { Avatar, Button, Card, CardLabel, DayMark, Sheet } from '../ui'
 import { api, relativeTime, type CheckInDetail } from '../../lib/api'
 import { thumbnail } from '../../lib/photo'
+import { useProfile } from '../../profile/useProfile'
 
 /**
  * Vista de un entrenamiento: la foto, lo que escribió y los comentarios.
@@ -20,9 +22,14 @@ export function CheckInSheet({
   onClose: () => void
   onCommented?: () => void
 }) {
+  const navigate = useNavigate()
+  const { profile } = useProfile()
   const [detail, setDetail] = useState<CheckInDetail | null>(null)
   const [body, setBody] = useState('')
   const [sending, setSending] = useState(false)
+
+  /** Si el entreno es mío puedo corregirlo o deshacerlo. */
+  const mine = Boolean(detail && profile && detail.user.id === profile.id)
 
   useEffect(() => {
     if (!checkInId) {
@@ -91,6 +98,17 @@ export function CheckInSheet({
             )
           )}
 
+          {mine && (
+            <Button
+              variant="secondary"
+              fullWidth
+              icon={<Pencil size={18} strokeWidth={2.5} />}
+              onClick={() => navigate(`/checkin?id=${detail.id}`)}
+            >
+              Editar o deshacer
+            </Button>
+          )}
+
           {/* --- Comentarios --- */}
           <div className="flex flex-col gap-3 pt-2">
             <CardLabel className="mb-0">
@@ -98,7 +116,7 @@ export function CheckInSheet({
             </CardLabel>
 
             {detail.comments.length === 0 ? (
-              <p className="text-caption text-text-faint">Todavía nadie dijo nada. Es tu momento.</p>
+              <p className="text-caption text-text-faint">Nadie ha dicho nada. Es tu momento.</p>
             ) : (
               <div className="flex flex-col gap-3">
                 {detail.comments.map((comment) => (
@@ -120,7 +138,7 @@ export function CheckInSheet({
               <input
                 value={body}
                 onChange={(event) => setBody(event.target.value)}
-                placeholder="Escribí algo…"
+                placeholder="Escribe algo…"
                 maxLength={280}
                 aria-label="Nuevo comentario"
                 className="flex-1 min-w-0 h-[var(--size-control)] px-4 rounded-[var(--radius-md)] bg-ink-900 border border-ink-700 outline-none text-body placeholder:text-ink-500 focus:border-accent transition-colors"

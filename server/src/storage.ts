@@ -91,3 +91,19 @@ export function isOwnCloudinaryUrl(url: string): boolean {
     return false
   }
 }
+
+/**
+ * Borra la foto de Cloudinary. Se llama al quitar la foto de un check-in o al
+ * deshacerlo entero: si no, el archivo queda pagando alojamiento para siempre.
+ *
+ * Nunca hace fallar la operación de arriba — que la foto sobreviva un borrado
+ * es feo, pero bloquear al usuario por eso es peor.
+ */
+export async function deletePhoto(publicId: string): Promise<void> {
+  if (!storageConfigured) return
+  try {
+    await cloudinary.uploader.destroy(publicId, { invalidate: true })
+  } catch (error) {
+    console.error('[storage] no se pudo borrar la foto:', publicId, error)
+  }
+}

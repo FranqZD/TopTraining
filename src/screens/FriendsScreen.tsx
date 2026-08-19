@@ -102,8 +102,8 @@ export function FriendsScreen() {
           {friends.length === 0 ? (
             <Card tone="outline">
               <p className="text-caption text-text-muted">
-                Todavía no tenés a nadie. Pasá tu código{' '}
-                <span className="num text-ink-100">{profile.friendCode}</span> o buscá por nombre acá abajo.
+                Todavía no tienes a nadie. Comparte tu código{' '}
+                <span className="num text-ink-100">{profile.friendCode}</span> o busca por nombre aquí abajo.
               </p>
             </Card>
           ) : (

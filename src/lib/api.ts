@@ -28,6 +28,7 @@ export const api = {
     request<T>(path, { method: 'POST', body: JSON.stringify(body ?? {}) }),
   patch: <T>(path: string, body: unknown) =>
     request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
+  del: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 }
 
 /* --- Tipos compartidos con el backend ------------------------------------ */
@@ -43,6 +44,8 @@ export interface Profile {
   trainingSlot: TrainingSlot | null
   targetWeightKg: number | null
   weeklyFrequency: number | null
+  /** Zona horaria IANA. La manda el navegador solo; nunca se pregunta. */
+  timeZone: string | null
   friendCode: string
   onboardingCompleted: boolean
 }
@@ -168,6 +171,40 @@ export interface CalendarData {
   weeks: WeekSummary[]
 }
 
+export interface RecapMember {
+  id: string
+  name: string
+  image: string | null
+  /** Meta semanal de esa persona en este grupo. */
+  goal: number
+  checkIns: number
+  weeksEvaluated: number
+  weeksMet: number
+  /** Racha diaria más larga dentro del mes. */
+  longestStreak: number
+  /** weeksMet / weeksEvaluated, 0..1. null si no hubo semanas que evaluar. */
+  completion: number | null
+}
+
+export interface Recap {
+  groupId: string
+  groupName: string
+  month: string
+  /** true si el mes todavía está corriendo: el recap es provisorio. */
+  partial: boolean
+  weeksEvaluated: number
+  /** Semanas-persona cumplidas sobre evaluadas, 0..1. */
+  completion: number | null
+  totalCheckIns: number
+  members: RecapMember[]
+  best: RecapMember | null
+  worst: RecapMember | null
+  everyoneDelivered: boolean
+  generatedAt: string
+  /** Mes de creación del grupo: hasta dónde se puede retroceder. */
+  earliestMonth: string
+}
+
 export interface Comment {
   id: string
   body: string
@@ -184,6 +221,9 @@ export interface AppConfig {
   providers: string[]
   /** false si el servidor no tiene Cloudinary: la app esconde la foto. */
   photoUploads: boolean
+  /** false si el servidor no tiene claves VAPID: no hay recordatorios. */
+  push: boolean
+  vapidPublicKey: string | null
 }
 
 export interface UploadSignature {

@@ -18,13 +18,13 @@ export interface FrequencyReaction {
 }
 
 export const FREQUENCY_REACTIONS: Record<number, FrequencyReaction> = {
-  1: { text: 'Apenas calentando', sub: 'Algo es algo. Todos empezamos por acá.', tone: 'neutral' },
+  1: { text: 'Apenas calentando', sub: 'Algo es algo. Todos empezamos por ahí.', tone: 'neutral' },
   2: { text: 'Ya vas agarrando ritmo', sub: 'Dos por semana ya es una costumbre.', tone: 'neutral' },
   3: { text: 'Nada mal', sub: 'Tres es el mínimo que de verdad se nota.', tone: 'accent' },
-  4: { text: 'Le estás echando ganas', sub: 'Acá ya empezás a incomodar a tus amigos.', tone: 'accent' },
+  4: { text: 'Le estás echando ganas', sub: 'Aquí ya empiezas a incomodar a tus amigos.', tone: 'accent' },
   5: { text: 'El punto perfecto', sub: 'Cinco y dos de descanso. Así se hace.', tone: 'success', highlight: true },
-  6: { text: 'Ya te pasaste, campeón', sub: 'Tu almohada quiere hablar con vos.', tone: 'warning' },
-  7: { text: 'Te vas a romper en pedazos', sub: 'Siete de siete. Nos vemos en el kinesiólogo.', tone: 'danger' },
+  6: { text: 'Ya te pasaste, campeón', sub: 'Tu almohada quiere hablar contigo.', tone: 'warning' },
+  7: { text: 'Te vas a romper en pedazos', sub: 'Siete de siete. Nos vemos en el fisioterapeuta.', tone: 'danger' },
 }
 
 export const TONE_TEXT: Record<ReactionTone, string> = {

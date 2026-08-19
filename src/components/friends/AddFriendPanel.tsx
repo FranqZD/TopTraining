@@ -74,7 +74,7 @@ function CodeTab({
       setCopied(true)
       setTimeout(() => setCopied(false), 1800)
     } catch {
-      setError('Tu navegador no dejó copiar. Dictalo y listo.')
+      setError('Tu navegador no dejó copiar. Díctalo y listo.')
     }
   }
 
@@ -89,7 +89,7 @@ function CodeTab({
       })
       setFeedback(
         result.status === 'accepted'
-          ? `¡${result.user.name} ya es tu amigo! Te había mandado solicitud.`
+          ? `¡${result.user.name} ya es tu amigo! Ya te había enviado solicitud.`
           : `Solicitud enviada a ${result.user.name}. Falta que la acepte.`,
       )
       setCode('')
@@ -116,7 +116,7 @@ function CodeTab({
             {copied ? 'Copiado' : 'Copiar'}
           </Button>
         </div>
-        <p className="text-caption text-text-muted mt-2">Pasáselo a tus amigos para que te agreguen.</p>
+        <p className="text-caption text-text-muted mt-2">Compártelo con tus amigos para que te agreguen.</p>
       </Card>
 
       <form onSubmit={submit} className="flex flex-col gap-3">
@@ -211,7 +211,7 @@ function SearchTab({ onRequestSent }: { onRequestSent?: (friend: Friend, status:
       />
 
       {query.trim().length >= 2 && results.length === 0 && !searching && (
-        <p className="text-caption text-text-faint">Nadie con ese nombre. Probá con el código.</p>
+        <p className="text-caption text-text-faint">Nadie con ese nombre. Intenta con el código.</p>
       )}
 
       <div className="flex flex-col gap-2">

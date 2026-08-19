@@ -41,7 +41,7 @@ export function JoinGroupScreen() {
 
         <Card tone="outline">
           <p className="text-caption text-text-muted">
-            Pedile el código a alguien que ya esté adentro. Son 6 caracteres y no distingue mayúsculas.
+            Pídele el código a alguien que ya esté dentro. Son 6 caracteres y no distingue mayúsculas.
           </p>
         </Card>
 

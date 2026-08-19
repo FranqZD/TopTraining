@@ -43,7 +43,7 @@ export function StepFriends({
 
   return (
     <StepShell
-      title="Traé a tus amigos"
+      title="Trae a tus amigos"
       subtitle="Solo no funciona. Con testigos, sí."
       footer={
         <>
@@ -63,10 +63,10 @@ export function StepFriends({
             <DayMark key={String(checkedIn)} state={checkedIn ? 'done' : 'today'} size="lg" animate={checkedIn} />
             <span className="flex-1 min-w-0">
               <span className="block font-bold leading-tight">
-                {checkedIn ? 'Anotado. Arrancaste con el pie derecho.' : 'Marcar que entrené hoy'}
+                {checkedIn ? 'Anotado. Empezaste con el pie derecho.' : 'Marcar que entrené hoy'}
               </span>
               <span className="block text-caption text-text-faint">
-                {checkedIn ? 'Ya suma a tu racha.' : 'Opcional — podés arrancar mañana.'}
+                {checkedIn ? 'Ya suma a tu racha.' : 'Opcional — puedes empezar mañana.'}
               </span>
             </span>
           </button>

@@ -1,4 +1,4 @@
-import { dailyStreak, weeklyStreak, weekStart, shiftDay, summarizeWeeks } from './src/streaks.js'
+import { dailyStreak, weeklyStreak, weekStart, shiftDay, summarizeWeeks, longestStreak, monthWeeks, monthEnd, previousMonth } from './src/streaks.js'
 
 let failures = 0
 function check(label: string, actual: unknown, expected: unknown) {
@@ -51,6 +51,23 @@ check('la semana en curso ya cumplida sí lleva fuego',
 check('semana futura queda neutra',
   summarizeWeeks(set(), ['2026-08-24'], 3, '2026-08-19'),
   [{ start:'2026-08-24', count:0, goal:3, met:false, status:'future' }])
+
+console.log('\nracha más larga dentro de un rango')
+check('vacío', longestStreak(set(), '2026-08-01', '2026-08-31'), 0)
+check('un tramo de 4', longestStreak(set('2026-08-05','2026-08-06','2026-08-07','2026-08-08'), '2026-08-01', '2026-08-31'), 4)
+check('se queda con el mejor de dos tramos',
+  longestStreak(set('2026-08-02','2026-08-03','2026-08-10','2026-08-11','2026-08-12'), '2026-08-01', '2026-08-31'), 3)
+check('no cuenta lo que queda fuera del rango',
+  longestStreak(set('2026-07-30','2026-07-31','2026-08-01'), '2026-08-01', '2026-08-31'), 1)
+
+console.log('\nsemanas y meses')
+check('agosto 2026 termina el 31', monthEnd('2026-08'), '2026-08-31')
+check('febrero bisiesto', monthEnd('2028-02'), '2028-02-29')
+check('mes anterior cruza el año', previousMonth('2026-01'), '2025-12')
+// Agosto 2026 arranca sábado: su primer lunes es el 3.
+check('los lunes de agosto 2026', monthWeeks('2026-08'), ['2026-08-03','2026-08-10','2026-08-17','2026-08-24','2026-08-31'])
+// Junio 2026 arranca lunes: ese mismo día es el primer lunes.
+check('si el mes arranca lunes, ese cuenta', monthWeeks('2026-06')[0], '2026-06-01')
 
 console.log(failures ? `\n${failures} fallo(s)` : '\nTodo OK')
 process.exit(failures ? 1 : 0)

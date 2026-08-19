@@ -1,103 +1,138 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 import { AnimatePresence, motion } from 'motion/react'
-import { ArrowLeft, Camera, Image as ImageIcon, Loader2, MessageSquarePlus, X } from 'lucide-react'
-import { Button, Card, CardLabel, DayMark, TextField, cn } from '../components/ui'
+import { ArrowLeft, Camera, Image as ImageIcon, Loader2, Pencil, Trash2, X } from 'lucide-react'
+import { Button, Card, CardLabel, DayMark, Sheet, TextField } from '../components/ui'
 import { api, localDay, type AppConfig, type CheckIn } from '../lib/api'
 import { thumbnail, uploadCheckInPhoto } from '../lib/photo'
 
 /**
  * Check-in del día. Es LA acción de la app, así que el camino corto es
- * sagrado: se abre y se confirma de un toque. Foto y descripción están, pero
- * ninguna se cruza en el camino de quien solo quiere marcar y seguir.
+ * sagrado: se abre y se confirma de un toque. Solo dos campos, los dos
+ * opcionales: una foto y un comentario.
  *
- * Uno por día: si ya entrenó, la pantalla lo muestra y no ofrece repetir.
+ * También es la pantalla donde se corrige lo hecho. Marcar por error, olvidarse
+ * la foto o querer cambiar lo que escribiste son cosas normales, así que el
+ * check-in se puede editar o deshacer siempre — el de hoy y los de otros días,
+ * abriéndolos con `?id=`.
  */
 
-/** Chips para describir sin teclado. El comentario libre es aparte y opcional. */
-const QUICK_TAGS = ['Piernas', 'Pecho', 'Espalda', 'Brazos', 'Hombros', 'Cardio', 'Funcional', 'Fútbol']
-
-type Phase = 'loading' | 'form' | 'done' | 'already'
+type Mode = 'loading' | 'view' | 'form' | 'done'
 
 export function CheckInScreen() {
   const navigate = useNavigate()
-  const day = localDay()
+  const [params] = useSearchParams()
+  const editingId = params.get('id')
 
-  const [phase, setPhase] = useState<Phase>('loading')
-  const [existing, setExisting] = useState<CheckIn | null>(null)
+  const [mode, setMode] = useState<Mode>('loading')
+  const [checkIn, setCheckIn] = useState<CheckIn | null>(null)
   const [photosEnabled, setPhotosEnabled] = useState(false)
 
+  /** Día al que apunta la pantalla: hoy, o el del check-in que se está editando. */
+  const day = checkIn?.day ?? localDay()
+
+  // --- Estado del formulario ---
   const [file, setFile] = useState<File | null>(null)
-  const [preview, setPreview] = useState<string | null>(null)
-  const [tags, setTags] = useState<string[]>([])
+  const [objectUrl, setObjectUrl] = useState<string | null>(null)
+  /** Foto ya guardada. null cuando se quitó. */
+  const [savedPhoto, setSavedPhoto] = useState<string | null>(null)
   const [comment, setComment] = useState('')
-  const [commentOpen, setCommentOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const cameraInput = useRef<HTMLInputElement>(null)
   const galleryInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    Promise.all([
-      api.get<{ checkIn: CheckIn | null }>('/checkins/latest').catch(() => ({ checkIn: null })),
-      api.get<AppConfig>('/config').catch(() => ({ providers: [], photoUploads: false })),
-    ]).then(([latest, config]) => {
-      setPhotosEnabled(config.photoUploads)
-      if (latest.checkIn?.day === day) {
-        setExisting(latest.checkIn)
-        setPhase('already')
-      } else {
-        setPhase('form')
-      }
-    })
-  }, [day])
+    const today = localDay()
+    const load = editingId
+      ? api.get<CheckIn>(`/checkins/${editingId}`)
+      : api
+          .get<{ checkIn: CheckIn | null }>('/checkins/latest')
+          .then(({ checkIn: latest }) => (latest?.day === today ? latest : null))
 
-  // La preview es un object URL: hay que soltarlo o queda pinchada la memoria.
+    Promise.all([
+      load.catch(() => null),
+      api.get<AppConfig>('/config').catch(() => null),
+    ]).then(([existing, config]) => {
+      setPhotosEnabled(Boolean(config?.photoUploads))
+      setCheckIn(existing)
+      setMode(existing ? 'view' : 'form')
+    })
+  }, [editingId])
+
+  // La preview local es un object URL: hay que soltarlo o queda pinchada la memoria.
   useEffect(() => {
     if (!file) {
-      setPreview(null)
+      setObjectUrl(null)
       return
     }
     const url = URL.createObjectURL(file)
-    setPreview(url)
+    setObjectUrl(url)
     return () => URL.revokeObjectURL(url)
   }, [file])
 
-  const toggleTag = (tag: string) =>
-    setTags((current) => (current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag]))
+  const preview = objectUrl ?? savedPhoto
 
-  /** Nota final: los chips arman la descripción; el comentario libre se suma. */
-  const buildNote = () => {
-    const head = tags.join(' · ')
-    const tail = comment.trim()
-    if (head && tail) return `${head} — ${tail}`
-    return head || tail || undefined
+  /** Pasa el check-in guardado al formulario para poder editarlo. */
+  const startEditing = () => {
+    if (!checkIn) return
+    setComment(checkIn.note ?? '')
+    setSavedPhoto(checkIn.photoUrl)
+    setFile(null)
+    setError(null)
+    setMode('form')
   }
 
-  const confirm = async () => {
+  const save = async () => {
     setSubmitting(true)
     setError(null)
     try {
       let photo: { url: string; publicId: string } | null = null
       if (file && photosEnabled) photo = await uploadCheckInPhoto(file, day)
 
-      const checkIn = await api.post<CheckIn>('/checkins', {
-        day,
-        note: buildNote(),
-        photoUrl: photo?.url,
-        photoPublicId: photo?.publicId,
-      })
-      setExisting(checkIn)
-      setPhase('done')
-      setTimeout(() => navigate('/', { replace: true }), 1900)
+      if (checkIn) {
+        const updated = await api.patch<CheckIn>(`/checkins/${checkIn.id}`, {
+          note: comment.trim(),
+          ...(photo ? { photoUrl: photo.url, photoPublicId: photo.publicId } : {}),
+          // Había foto guardada, la quitó y no puso otra.
+          ...(!photo && checkIn.photoUrl && !savedPhoto ? { removePhoto: true } : {}),
+        })
+        setCheckIn(updated)
+        setMode('view')
+      } else {
+        const created = await api.post<CheckIn>('/checkins', {
+          day,
+          note: comment.trim() || undefined,
+          photoUrl: photo?.url,
+          photoPublicId: photo?.publicId,
+        })
+        setCheckIn(created)
+        setMode('done')
+        setTimeout(() => navigate('/', { replace: true }), 1900)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No pudimos guardar el check-in')
+    } finally {
       setSubmitting(false)
     }
   }
 
-  if (phase === 'loading') {
+  const remove = async () => {
+    if (!checkIn) return
+    setSubmitting(true)
+    try {
+      await api.del(`/checkins/${checkIn.id}`)
+      navigate('/', { replace: true })
+    } catch {
+      setError('No pudimos deshacerlo. Inténtalo de nuevo.')
+      setSubmitting(false)
+      setConfirmingDelete(false)
+    }
+  }
+
+  if (mode === 'loading') {
     return (
       <div className="min-h-dvh bg-canvas grid place-items-center">
         <Loader2 size={28} strokeWidth={2.5} className="animate-spin text-accent" />
@@ -105,7 +140,10 @@ export function CheckInScreen() {
     )
   }
 
-  if (phase === 'done') return <SuccessState checkIn={existing} />
+  if (mode === 'done') return <SuccessState checkIn={checkIn} />
+
+  const editing = checkIn !== null
+  const isToday = day === localDay()
 
   return (
     <div className="min-h-dvh bg-canvas flex flex-col">
@@ -113,7 +151,7 @@ export function CheckInScreen() {
         <header className="flex items-center gap-2 -ml-2">
           <button
             type="button"
-            onClick={() => navigate('/')}
+            onClick={() => (mode === 'form' && editing ? setMode('view') : navigate('/'))}
             aria-label="Volver"
             className="pressable grid place-items-center size-11 rounded-[var(--radius-md)] text-ink-300 hover:text-ink-50 hover:bg-ink-850 cursor-pointer"
           >
@@ -121,12 +159,20 @@ export function CheckInScreen() {
           </button>
           <div>
             <p className="tape text-text-faint">{formatDay(day)}</p>
-            <h1 className="text-headline">{phase === 'already' ? 'Ya entrenaste' : 'Marcar entreno'}</h1>
+            <h1 className="text-headline">
+              {mode === 'view' ? (isToday ? 'Ya entrenaste' : 'Tu entrenamiento') : editing ? 'Editar' : 'Marcar entreno'}
+            </h1>
           </div>
         </header>
 
-        {phase === 'already' ? (
-          <AlreadyCheckedIn checkIn={existing} onBack={() => navigate('/')} />
+        {mode === 'view' ? (
+          <SavedCheckIn
+            checkIn={checkIn!}
+            isToday={isToday}
+            onEdit={startEditing}
+            onDelete={() => setConfirmingDelete(true)}
+            onBack={() => navigate('/')}
+          />
         ) : (
           <>
             {/* --- Foto (opcional) --- */}
@@ -136,10 +182,17 @@ export function CheckInScreen() {
 
                 {preview ? (
                   <div className="relative rounded-[var(--radius-lg)] overflow-hidden border border-ink-700">
-                    <img src={preview} alt="Vista previa del entreno" className="w-full aspect-square object-cover" />
+                    <img
+                      src={objectUrl ?? thumbnail(preview, 800)}
+                      alt="Vista previa del entreno"
+                      className="w-full aspect-square object-cover"
+                    />
                     <button
                       type="button"
-                      onClick={() => setFile(null)}
+                      onClick={() => {
+                        setFile(null)
+                        setSavedPhoto(null)
+                      }}
                       aria-label="Quitar la foto"
                       className="pressable absolute top-3 right-3 grid place-items-center size-11 rounded-full bg-ink-1000/80 backdrop-blur border border-ink-700 text-ink-100 cursor-pointer"
                     >
@@ -175,52 +228,16 @@ export function CheckInScreen() {
               </section>
             )}
 
-            {/* --- Descripción sin teclado --- */}
+            {/* --- Comentario (opcional) --- */}
             <section className="flex flex-col gap-3">
-              <CardLabel className="mb-0">Qué hiciste · opcional</CardLabel>
-              <div className="flex flex-wrap gap-2">
-                {QUICK_TAGS.map((tag) => {
-                  const selected = tags.includes(tag)
-                  return (
-                    <motion.button
-                      key={tag}
-                      type="button"
-                      aria-pressed={selected}
-                      onClick={() => toggleTag(tag)}
-                      whileTap={{ scale: 0.94 }}
-                      className={cn(
-                        'min-h-[var(--size-touch)] px-4 rounded-[var(--radius-pill)] border cursor-pointer',
-                        'text-label font-bold transition-colors duration-[var(--duration-fast)]',
-                        selected
-                          ? 'bg-accent border-accent text-on-accent'
-                          : 'bg-ink-850 border-ink-700 text-ink-200 hover:border-ink-600',
-                      )}
-                    >
-                      {tag}
-                    </motion.button>
-                  )
-                })}
-              </div>
-
-              {commentOpen ? (
-                <TextField
-                  name="comment"
-                  value={comment}
-                  onChange={(event) => setComment(event.target.value)}
-                  placeholder="Cómo te fue…"
-                  maxLength={280}
-                  autoFocus
-                />
-              ) : (
-                <Button
-                  variant="ghost"
-                  onClick={() => setCommentOpen(true)}
-                  icon={<MessageSquarePlus size={18} strokeWidth={2.5} />}
-                  className="self-start !px-3"
-                >
-                  Agregar un comentario
-                </Button>
-              )}
+              <CardLabel className="mb-0">Comentario · opcional</CardLabel>
+              <TextField
+                name="comment"
+                value={comment}
+                onChange={(event) => setComment(event.target.value)}
+                placeholder="Cómo te fue…"
+                maxLength={280}
+              />
             </section>
 
             {error && (
@@ -234,24 +251,142 @@ export function CheckInScreen() {
               <Button
                 size="lg"
                 fullWidth
-                onClick={confirm}
+                onClick={save}
                 disabled={submitting}
                 icon={submitting ? <Loader2 size={20} strokeWidth={2.5} className="animate-spin" /> : undefined}
               >
-                {submitting ? (file ? 'Subiendo foto…' : 'Guardando…') : 'Confirmar entrenamiento'}
+                {submitting
+                  ? file
+                    ? 'Subiendo foto…'
+                    : 'Guardando…'
+                  : editing
+                    ? 'Guardar cambios'
+                    : 'Confirmar entrenamiento'}
               </Button>
               <p className="text-caption text-text-faint text-center mt-3">
-                No hace falta llenar nada. Un toque y listo.
+                {editing ? 'Puedes cambiarlo las veces que quieras.' : 'No hace falta llenar nada. Un toque y listo.'}
               </p>
             </div>
           </>
         )}
       </div>
+
+      <ConfirmDelete
+        open={confirmingDelete}
+        isToday={isToday}
+        busy={submitting}
+        onCancel={() => setConfirmingDelete(false)}
+        onConfirm={remove}
+      />
     </div>
   )
 }
 
 /* --- Piezas ------------------------------------------------------------- */
+
+function SavedCheckIn({
+  checkIn,
+  isToday,
+  onEdit,
+  onDelete,
+  onBack,
+}: {
+  checkIn: CheckIn
+  isToday: boolean
+  onEdit: () => void
+  onDelete: () => void
+  onBack: () => void
+}) {
+  return (
+    <div className="flex flex-col gap-5 flex-1">
+      <Card tone="accent" notch className="flex items-center gap-4">
+        <DayMark state="done" size="lg" animate />
+        <div className="min-w-0">
+          <p className="text-title leading-tight">{isToday ? 'Ya entrenaste hoy' : 'Entrenamiento marcado'}</p>
+          <p className="text-caption text-text-muted">
+            {isToday ? 'Uno por día. Regresa mañana.' : 'Puedes editarlo o deshacerlo cuando quieras.'}
+          </p>
+        </div>
+      </Card>
+
+      {checkIn.photoUrl && (
+        <img
+          src={thumbnail(checkIn.photoUrl, 800)}
+          alt="Foto de tu entrenamiento"
+          className="w-full aspect-square object-cover rounded-[var(--radius-lg)] border border-ink-700"
+        />
+      )}
+
+      {checkIn.note && (
+        <Card>
+          <CardLabel>Lo que anotaste</CardLabel>
+          <p className="text-body text-ink-100">{checkIn.note}</p>
+        </Card>
+      )}
+
+      <div className="mt-auto pb-6 flex flex-col gap-3">
+        <div className="grid grid-cols-2 gap-3">
+          <Button variant="secondary" onClick={onEdit} icon={<Pencil size={18} strokeWidth={2.5} />}>
+            Editar
+          </Button>
+          <Button variant="danger" onClick={onDelete} icon={<Trash2 size={18} strokeWidth={2.5} />}>
+            Deshacer
+          </Button>
+        </div>
+        <Button size="lg" variant="ghost" fullWidth onClick={onBack}>
+          Volver al inicio
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Deshacer borra el entreno y, con él, los comentarios que le dejaron. Es
+ * destructivo, así que se pregunta — pero con dos botones grandes, sin teclado
+ * ni escribir "CONFIRMAR".
+ */
+function ConfirmDelete({
+  open,
+  isToday,
+  busy,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean
+  isToday: boolean
+  busy: boolean
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  return (
+    <Sheet open={open} onClose={onCancel} title={<span className="text-title">¿Deshacer el entrenamiento?</span>}>
+      <div className="flex flex-col gap-4">
+        <p className="text-body text-text-muted">
+          {isToday
+            ? 'Va a desaparecer de tu día y del feed de tus grupos, junto con los comentarios que te hayan dejado.'
+            : 'Va a desaparecer del feed y del calendario, junto con los comentarios que te hayan dejado.'}
+        </p>
+        <p className="text-caption text-text-faint">Siempre puedes volver a marcarlo.</p>
+        <div className="flex flex-col gap-2 pt-1">
+          <Button
+            size="lg"
+            variant="danger"
+            fullWidth
+            onClick={onConfirm}
+            disabled={busy}
+            icon={busy ? <Loader2 size={18} strokeWidth={2.5} className="animate-spin" /> : <Trash2 size={18} strokeWidth={2.5} />}
+          >
+            Sí, deshacer
+          </Button>
+          <Button size="lg" variant="secondary" fullWidth onClick={onCancel} disabled={busy}>
+            Mejor no
+          </Button>
+        </div>
+      </div>
+    </Sheet>
+  )
+}
 
 function PhotoButton({
   onClick,
@@ -271,41 +406,6 @@ function PhotoButton({
       {icon}
       <span className="text-label font-bold">{children}</span>
     </button>
-  )
-}
-
-function AlreadyCheckedIn({ checkIn, onBack }: { checkIn: CheckIn | null; onBack: () => void }) {
-  return (
-    <div className="flex flex-col gap-5 flex-1">
-      <Card tone="accent" notch className="flex items-center gap-4">
-        <DayMark state="done" size="lg" animate />
-        <div className="min-w-0">
-          <p className="text-title leading-tight">Ya entrenaste hoy</p>
-          <p className="text-caption text-text-muted">Uno por día. Volvé mañana.</p>
-        </div>
-      </Card>
-
-      {checkIn?.photoUrl && (
-        <img
-          src={thumbnail(checkIn.photoUrl, 800)}
-          alt="Foto de tu entreno de hoy"
-          className="w-full aspect-square object-cover rounded-[var(--radius-lg)] border border-ink-700"
-        />
-      )}
-
-      {checkIn?.note && (
-        <Card>
-          <CardLabel>Lo que anotaste</CardLabel>
-          <p className="text-body text-ink-100">{checkIn.note}</p>
-        </Card>
-      )}
-
-      <div className="mt-auto pb-6">
-        <Button size="lg" variant="secondary" fullWidth onClick={onBack}>
-          Volver al inicio
-        </Button>
-      </div>
-    </div>
   )
 }
 
@@ -350,7 +450,9 @@ function SuccessState({ checkIn }: { checkIn: CheckIn | null }) {
   )
 }
 
-/** "miércoles 19 de agosto" con la primera en mayúscula. */
+/* --- Texto --------------------------------------------------------------- */
+
+/** "Miércoles 19 de agosto" con la primera en mayúscula. */
 function formatDay(day: string): string {
   const [year, month, date] = day.split('-').map(Number)
   const formatted = new Date(year!, month! - 1, date!).toLocaleDateString('es', {

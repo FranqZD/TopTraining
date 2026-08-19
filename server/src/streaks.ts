@@ -132,3 +132,50 @@ export function summarizeWeeks(
     return { start, count, goal, met, status }
   })
 }
+
+/**
+ * Racha más larga dentro de un rango cerrado de días.
+ *
+ * A diferencia de `dailyStreak`, que mira hacia atrás desde hoy, esta recorre
+ * la ventana entera y devuelve el mejor tramo: es lo que sirve para el recap
+ * ("la racha más larga del mes"), donde el mes ya pasó y no hay un "hoy".
+ */
+export function longestStreak(days: Set<string>, from: string, to: string): number {
+  let best = 0
+  let run = 0
+  for (let day = from; day <= to; day = shiftDay(day, 1)) {
+    run = days.has(day) ? run + 1 : 0
+    if (run > best) best = run
+  }
+  return best
+}
+
+/** Último día del mes "YYYY-MM", como "YYYY-MM-DD". */
+export function monthEnd(month: string): string {
+  const [year, monthNumber] = month.split('-').map(Number)
+  const lastDay = new Date(Date.UTC(year!, monthNumber!, 0)).getUTCDate()
+  return `${month}-${String(lastDay).padStart(2, '0')}`
+}
+
+/**
+ * Los lunes que "pertenecen" a un mes: los que caen dentro de él.
+ *
+ * Una semana pertenece a un solo mes, el de su lunes. Si contáramos todas las
+ * semanas que tocan el mes, la semana partida entre dos meses se contaría dos
+ * veces y ninguna de las dos con todos sus días.
+ */
+export function monthWeeks(month: string): string[] {
+  const first = `${month}-01`
+  const last = monthEnd(month)
+  const firstMonday = weekStart(first) >= first ? weekStart(first) : shiftDay(weekStart(first), 7)
+
+  const mondays: string[] = []
+  for (let monday = firstMonday; monday <= last; monday = shiftDay(monday, 7)) mondays.push(monday)
+  return mondays
+}
+
+/** Mes anterior a "YYYY-MM". */
+export function previousMonth(month: string): string {
+  const [year, monthNumber] = month.split('-').map(Number)
+  return new Date(Date.UTC(year!, monthNumber! - 2, 1)).toISOString().slice(0, 7)
+}

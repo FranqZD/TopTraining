@@ -246,11 +246,12 @@ Referencia de que el sistema aguanta pantallas reales:
   `tone="accent"` porque son lo único que pide acción; la meta base del grupo
   y la meta personal usan el mismo `ChoiceGroup`, así que elegir "5×" se ve
   igual en el onboarding, en Ajustes y adentro del grupo.
-- **Check-in:** la pantalla con menos fricción de la app. El botón de confirmar
-  nunca se deshabilita ni espera a que llenes algo, y la descripción se arma
-  con chips (`Piernas`, `Cardio`, …) — el comentario libre está detrás de un
-  botón, así el teclado no aparece salvo que lo pidas. Al confirmar, la marca
-  de "cumplido" entra con resorte a pantalla completa.
+- **Check-in:** la pantalla con menos fricción de la app. Dos campos y los dos
+  opcionales — foto y comentario —, y el botón de confirmar nunca se
+  deshabilita ni espera a que llenes nada. Al confirmar, la marca de "cumplido"
+  entra con resorte a pantalla completa. Es la excepción declarada al principio
+  de "mínimo teclado": describir un entreno es texto libre y no hay botón que
+  lo reemplace, pero se puede saltear entero.
 - **Grupo:** los dos modos se alternan con el mismo `SegmentedControl` del
   login y del onboarding. Los datos del grupo (código, tu meta, miembros) van
   en un panel plegado: se consultan de vez en cuando y no compiten con el
@@ -258,6 +259,18 @@ Referencia de que el sistema aguanta pantallas reales:
 - **Calendario:** un día sin check-in se dibuja como texto, no como botón —
   si no hay nada que abrir, el dedo no debería creer que sí. La octava columna
   reusa la llama del acento y la equis sobre trama diagonal de `DayMark`.
+- **Recordatorios:** el permiso del navegador nunca se pide solo — siempre
+  detrás de un botón, y en iOS recién después de que la app esté instalada.
+  Las instrucciones de instalación usan `Card tone="accent"` con pasos
+  numerados, porque es lo único que se puede hacer cuando el sistema no ofrece
+  ninguna API para instalar.
+- **Ícono de la app:** la misma marca que el resto — fondo coral a sangre, "T"
+  casi negra y la esquina cortada en diagonal. Se genera por código
+  (`scripts/generate-icons.mjs`) desde los mismos hex de la paleta ember.
+- **Recap:** el número grande manda (`.num` en `text-stat-xl`), la barra de
+  cumplimiento cambia de color por tramos (success / warning / danger) y el
+  veredicto en texto acompaña al número. La tarjeta del "más huevón" usa
+  `danger` sin dramatismo: el chiste está en el texto, no en el rojo.
 - **Modales:** siempre hoja inferior, nunca modal centrado. En una app que se
   usa con una mano, lo importante tiene que caer cerca del pulgar.
 

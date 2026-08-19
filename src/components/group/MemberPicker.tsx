@@ -61,7 +61,7 @@ export function MemberPicker({
                 <span className="flex-1 min-w-0">
                   <span className="flex items-center gap-1.5">
                     <span className="font-bold truncate leading-tight">{member.name}</span>
-                    {member.isMe && <span className="tape text-accent">vos</span>}
+                    {member.isMe && <span className="tape text-accent">tú</span>}
                   </span>
                   <span className="block tape text-text-faint">
                     meta {member.effectiveGoal}× · {member.personalGoal === null ? 'del grupo' : 'propia'}

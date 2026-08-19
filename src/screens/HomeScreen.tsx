@@ -61,14 +61,17 @@ export function HomeScreen() {
            ------------------------------------------------------------------ */}
         <section aria-label="Check-in de hoy">
           {checkedInToday ? (
-            <div className="flex items-center gap-4 p-4 rounded-[var(--radius-lg)] notch bg-success-tint border border-success/45">
+            <Link
+              to="/checkin"
+              className="pressable flex items-center gap-4 p-4 rounded-[var(--radius-lg)] notch bg-success-tint border border-success/45"
+            >
               <DayMark state="done" size="lg" />
-              <div className="flex-1 min-w-0">
-                <p className="text-title leading-tight">Ya entrenaste hoy</p>
-                <p className="text-caption text-text-muted">
-                  {todaysCheckIn?.note ? todaysCheckIn.note : 'Tus amigos ya lo vieron.'}
-                </p>
-              </div>
+              <span className="flex-1 min-w-0">
+                <span className="block text-title leading-tight">Ya entrenaste hoy</span>
+                <span className="block text-caption text-text-muted truncate">
+                  {todaysCheckIn?.note ? todaysCheckIn.note : 'Toca para editarlo o deshacerlo.'}
+                </span>
+              </span>
               {todaysCheckIn?.photoUrl && (
                 <img
                   src={thumbnail(todaysCheckIn.photoUrl, 120)}
@@ -76,7 +79,7 @@ export function HomeScreen() {
                   className="size-14 rounded-[var(--radius-md)] object-cover border border-success/30 shrink-0"
                 />
               )}
-            </div>
+            </Link>
           ) : (
             <Link
               to="/checkin"
@@ -107,7 +110,7 @@ export function HomeScreen() {
             <Card tone="outline">
               <p className="text-body text-ink-200">Todavía no estás en ningún grupo.</p>
               <p className="text-caption text-text-faint mt-1">
-                Un grupo es el viaje, la meta y la gente que te va a cargar si no vas.
+                Un grupo es el viaje, la meta y la gente que te va a echar carrilla si no vas.
               </p>
             </Card>
           ) : (

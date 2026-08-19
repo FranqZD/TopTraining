@@ -84,7 +84,7 @@ export function LoginScreen() {
             Training
           </h1>
           <p className="text-lead text-text-muted">
-            Metas, rachas y tus amigos mirando. <span className="text-ink-100 font-bold">Sin excusas.</span>
+            Metas, rachas y tus amigos viendo. <span className="text-ink-100 font-bold">Sin pretextos.</span>
           </p>
         </motion.header>
 
@@ -116,7 +116,7 @@ export function LoginScreen() {
 
         <div className="flex items-center gap-3 my-7">
           <span className="h-px flex-1 bg-line-soft" />
-          <span className="tape text-ink-500">o con tu email</span>
+          <span className="tape text-ink-500">o con tu correo</span>
           <span className="h-px flex-1 bg-line-soft" />
         </div>
 
@@ -139,7 +139,7 @@ export function LoginScreen() {
             type="email"
             autoComplete="email"
             required
-            placeholder="vos@email.com"
+            placeholder="tu@email.com"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             icon={<AtSign size={18} strokeWidth={2.5} />}
@@ -173,7 +173,7 @@ export function LoginScreen() {
         </form>
 
         <p className="text-caption text-text-faint text-center mt-auto pt-10">
-          Al entrar aceptás que tus amigos vean si entrenaste. Ese es el punto.
+          Al entrar aceptas que tus amigos vean si entrenaste. Ese es el punto.
         </p>
       </div>
     </div>
@@ -191,15 +191,15 @@ function NotConfigured() {
 function translateAuthError(code: string | undefined, fallback?: string): string {
   switch (code) {
     case 'INVALID_EMAIL_OR_PASSWORD':
-      return 'Email o contraseña incorrectos.'
+      return 'Correo o contraseña incorrectos.'
     case 'USER_ALREADY_EXISTS':
     case 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL':
-      return 'Ya existe una cuenta con ese email. Probá entrando.'
+      return 'Ya existe una cuenta con ese correo. Mejor inicia sesión.'
     case 'PASSWORD_TOO_SHORT':
       return 'La contraseña necesita al menos 8 caracteres.'
     case 'INVALID_EMAIL':
-      return 'Ese email no parece válido.'
+      return 'Ese correo no parece válido.'
     default:
-      return fallback ?? 'No pudimos completar la acción. Probá de nuevo.'
+      return fallback ?? 'No pudimos completar la acción. Inténtalo de nuevo.'
   }
 }

@@ -2,12 +2,12 @@ import { useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useNavigate } from 'react-router'
 import { ArrowLeft, Moon, Sunrise, Sun } from 'lucide-react'
-import { Button, ChoiceGroup, NumberStepper, ProgressBar, TextField, cn } from '../../components/ui'
+import { Button, ChoiceGroup, NumberStepper, ProgressBar, TextField } from '../../components/ui'
 import { useProfile } from '../../profile/useProfile'
 import type { TrainingSlot } from '../../lib/api'
 import { StepShell } from './StepShell'
 import { StepFriends } from './StepFriends'
-import { FREQUENCY_REACTIONS, TONE_SURFACE, TONE_TEXT } from './frequency-reactions'
+import { StepFrequency } from './StepFrequency'
 
 const TOTAL_STEPS = 5
 
@@ -108,15 +108,15 @@ export function OnboardingScreen() {
                     maxLength={30}
                     autoFocus
                     autoComplete="nickname"
-                    hint="Después lo podés cambiar en Ajustes."
+                    hint="Después lo puedes cambiar en Ajustes."
                   />
                 </StepShell>
               )}
 
               {step === 2 && (
                 <StepShell
-                  title="¿Cuándo entrenás?"
-                  subtitle="Para molestarte a la hora justa, no a las 7 de la mañana si sos de noche."
+                  title="¿Cuándo entrenas?"
+                  subtitle="Para molestarte a la hora correcta, no a las 7 de la mañana si eres de noche."
                   footer={
                     <Button
                       size="lg"
@@ -139,7 +139,7 @@ export function OnboardingScreen() {
                     options={[
                       { value: 'morning', label: 'Mañana', hint: 'antes de todo', icon: <Sunrise size={26} strokeWidth={2} /> },
                       { value: 'afternoon', label: 'Tarde', hint: 'al mediodía o después', icon: <Sun size={26} strokeWidth={2} /> },
-                      { value: 'night', label: 'Noche', hint: 'saliendo del laburo', icon: <Moon size={26} strokeWidth={2} /> },
+                      { value: 'night', label: 'Noche', hint: 'saliendo del trabajo', icon: <Moon size={26} strokeWidth={2} /> },
                     ]}
                     className="[&>button]:min-h-[7.5rem]"
                   />
@@ -148,7 +148,7 @@ export function OnboardingScreen() {
 
               {step === 3 && (
                 <StepShell
-                  title="¿A qué peso querés llegar?"
+                  title="¿A qué peso quieres llegar?"
                   subtitle="Un número concreto. Sin “estar mejor”."
                   footer={
                     <Button
@@ -176,7 +176,7 @@ export function OnboardingScreen() {
                     />
                   </div>
                   <p className="text-caption text-text-faint text-center">
-                    Tocá los botones o escribilo. Se ajusta de a medio kilo.
+                    Usa los botones o escríbelo. Se ajusta de medio en medio kilo.
                   </p>
                 </StepShell>
               )}
@@ -191,65 +191,5 @@ export function OnboardingScreen() {
         </div>
       </div>
     </div>
-  )
-}
-
-/* --- Paso 4: frecuencia con reacción escalada ---------------------------- */
-
-function StepFrequency({
-  value,
-  onSelect,
-  onAdvance,
-  onSave,
-}: {
-  value: number | null
-  onSelect: (value: number) => void
-  onAdvance: () => void
-  onSave: (value: number) => Promise<unknown>
-}) {
-  const reaction = value ? FREQUENCY_REACTIONS[value] : null
-
-  const choose = async (next: number) => {
-    onSelect(next)
-    await onSave(next)
-    // Damos tiempo a leer la reacción antes de pasar de pantalla.
-    setTimeout(onAdvance, 1100)
-  }
-
-  return (
-    <StepShell
-      title="¿Cuántas veces entrenás por semana?"
-      subtitle="Hoy, de verdad. No la versión de tu cabeza."
-    >
-      <ChoiceGroup
-        label="Frecuencia semanal actual"
-        columns={4}
-        value={value}
-        onChange={choose}
-        options={[1, 2, 3, 4, 5, 6, 7].map((n) => ({ value: n, label: <span className="num text-title">{n}</span> }))}
-      />
-
-      <div className="min-h-[7.5rem]">
-        <AnimatePresence mode="wait">
-          {reaction && (
-            <motion.div
-              key={value}
-              initial={{ opacity: 0, y: 10, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -6, scale: 0.98 }}
-              transition={{ type: 'spring', stiffness: 480, damping: 26 }}
-              className={cn(
-                'rounded-[var(--radius-lg)] border p-4 text-center',
-                TONE_SURFACE[reaction.tone],
-                reaction.highlight && 'notch',
-              )}
-            >
-              <p className={cn('text-title', TONE_TEXT[reaction.tone])}>{reaction.text}</p>
-              <p className="text-caption text-text-muted mt-1">{reaction.sub}</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </StepShell>
   )
 }

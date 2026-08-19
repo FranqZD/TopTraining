@@ -12,6 +12,7 @@ import {
   ThemePicker,
   cn,
 } from '../components/ui'
+import { PushSettings } from '../components/settings/PushSettings'
 import { useProfile } from '../profile/useProfile'
 import { signOut } from '../lib/auth-client'
 import type { Profile, TrainingSlot } from '../lib/api'
@@ -132,6 +133,9 @@ function SettingsForm({ profile }: { profile: Profile }) {
           {reaction && <p className={cn('text-caption', TONE_TEXT[reaction.tone])}>{reaction.text}.</p>}
         </Section>
 
+        {/* --- Recordatorios: la hora sale del horario de entreno de arriba --- */}
+        <PushSettings trainingSlot={profile.trainingSlot} />
+
         {/* --- Código de amistad --- */}
         <Section label="Tu código de amigo">
           <Card tone="accent" notch>
@@ -146,7 +150,7 @@ function SettingsForm({ profile }: { profile: Profile }) {
                 {copied ? 'Copiado' : 'Copiar'}
               </Button>
             </div>
-            <p className="text-caption text-text-muted mt-2">Es fijo y no se puede cambiar. Pasáselo a quien quieras.</p>
+            <p className="text-caption text-text-muted mt-2">Es fijo y no se puede cambiar. Compártelo con quien quieras.</p>
           </Card>
         </Section>
 

@@ -6,8 +6,11 @@ import { z } from 'zod'
 import { auth, enabledProviders } from './auth.js'
 import { prisma } from './db.js'
 import { generateGroupCode } from './codes.js'
-import { createUploadSignature, isOwnCloudinaryUrl, storageConfigured } from './storage.js'
+import { createUploadSignature, deletePhoto, isOwnCloudinaryUrl, storageConfigured } from './storage.js'
 import { computeStreaks, shiftDay, summarizeWeeks, weekStart } from './streaks.js'
+import { pushConfigured, sendToUser, vapidPublicKey } from './push.js'
+import { runNudgeSweep, startScheduler } from './scheduler.js'
+import { generateClosedRecaps, getRecap } from './recap.js'
 import type { Request, Response, NextFunction } from 'express'
 
 const PORT = Number(process.env.PORT ?? 8787)
@@ -60,6 +63,7 @@ const PROFILE_SELECT = {
   trainingSlot: true,
   targetWeightKg: true,
   weeklyFrequency: true,
+  timeZone: true,
   friendCode: true,
   onboardingCompleted: true,
 } as const
@@ -69,8 +73,106 @@ const PROFILE_SELECT = {
    ------------------------------------------------------------------------- */
 
 app.get('/api/config', (_req, res) => {
-  res.json({ providers: enabledProviders, photoUploads: storageConfigured })
+  res.json({
+    providers: enabledProviders,
+    photoUploads: storageConfigured,
+    push: pushConfigured,
+    vapidPublicKey,
+  })
 })
+
+/* ---------------------------------------------------------------------------
+   Push
+   ------------------------------------------------------------------------- */
+
+const subscriptionSchema = z.object({
+  endpoint: z.string().url(),
+  keys: z.object({ p256dh: z.string().min(1), auth: z.string().min(1) }),
+})
+
+/**
+ * Registra el dispositivo. Es idempotente por endpoint: si el navegador
+ * renueva la suscripción o el usuario vuelve a activar, se actualiza la fila
+ * en vez de duplicarla.
+ */
+app.post('/api/push/subscribe', requireAuth, async (req, res) => {
+  const parsed = subscriptionSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Suscripción inválida' })
+    return
+  }
+  const { endpoint, keys } = parsed.data
+
+  await prisma.pushSubscription.upsert({
+    where: { endpoint },
+    create: {
+      endpoint,
+      p256dh: keys.p256dh,
+      auth: keys.auth,
+      userId: req.userId!,
+      userAgent: req.get('user-agent')?.slice(0, 200),
+    },
+    // Un mismo endpoint puede cambiar de dueño si comparten el dispositivo.
+    update: { p256dh: keys.p256dh, auth: keys.auth, userId: req.userId! },
+  })
+
+  const devices = await prisma.pushSubscription.count({ where: { userId: req.userId } })
+  res.json({ subscribed: true, devices })
+})
+
+app.post('/api/push/unsubscribe', requireAuth, async (req, res) => {
+  const parsed = z.object({ endpoint: z.string().url() }).safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Endpoint inválido' })
+    return
+  }
+  await prisma.pushSubscription
+    .deleteMany({ where: { endpoint: parsed.data.endpoint, userId: req.userId } })
+    .catch(() => {})
+
+  const devices = await prisma.pushSubscription.count({ where: { userId: req.userId } })
+  res.json({ subscribed: devices > 0, devices })
+})
+
+app.get('/api/push/status', requireAuth, async (req, res) => {
+  const devices = await prisma.pushSubscription.count({ where: { userId: req.userId } })
+  const sentToday = await prisma.pushLog.findFirst({
+    where: { userId: req.userId, day: todayFor(req) },
+    select: { sentAt: true, kind: true },
+  })
+  res.json({ enabled: pushConfigured, devices, sentToday })
+})
+
+/** Aviso de prueba a uno mismo: sirve para confirmar que todo el camino anda. */
+app.post('/api/push/test', requireAuth, async (req, res) => {
+  if (!pushConfigured) {
+    res.status(503).json({ error: 'El push no está configurado en este servidor' })
+    return
+  }
+  const delivered = await sendToUser(req.userId!, {
+    title: 'Probando, probando',
+    body: 'Si ves esto, los recordatorios ya funcionan.',
+    url: '/settings',
+    tag: 'test',
+  })
+  res.json({ delivered })
+})
+
+/**
+ * Dispara una pasada del job a mano. Solo fuera de producción: es para poder
+ * probar los recordatorios sin esperar a que den las 20:30.
+ */
+if (process.env.NODE_ENV !== 'production') {
+  app.post('/api/push/run-sweep', requireAuth, async (req, res) => {
+    const at = req.body?.at ? new Date(String(req.body.at)) : new Date()
+    res.json(await runNudgeSweep(Number.isNaN(at.getTime()) ? new Date() : at))
+  })
+
+  /** Dispara el job del recap sin esperar al día 1. */
+  app.post('/api/recaps/run', requireAuth, async (req, res) => {
+    res.json(await generateClosedRecaps(todayFor(req)))
+  })
+}
 
 /* ---------------------------------------------------------------------------
    Perfil
@@ -87,6 +189,9 @@ const profilePatchSchema = z
     targetWeightKg: z.number().min(30).max(300).optional(),
     weeklyFrequency: z.number().int().min(1).max(7).optional(),
     onboardingCompleted: z.boolean().optional(),
+    /// La manda el navegador solo: el cron la necesita para saber qué hora es
+    /// para el usuario. Nunca se le pregunta.
+    timeZone: z.string().max(64).optional(),
   })
   .strict()
 
@@ -229,7 +334,7 @@ const requestSchema = z
     code: z.string().trim().min(4).max(12).optional(),
   })
   .refine((data) => Boolean(data.userId) !== Boolean(data.code), {
-    message: 'Mandá userId o code, no los dos',
+    message: 'Envía userId o code, no ambos',
   })
 
 app.post('/api/friends/request', requireAuth, async (req, res) => {
@@ -251,7 +356,7 @@ app.post('/api/friends/request', requireAuth, async (req, res) => {
     return
   }
   if (target.id === req.userId) {
-    res.status(400).json({ error: 'No podés agregarte a vos mismo' })
+    res.status(400).json({ error: 'No puedes agregarte a ti mismo' })
     return
   }
 
@@ -449,7 +554,7 @@ app.get('/api/groups/:id', requireAuth, async (req, res) => {
   })
   const mine = group?.members.find((member) => member.userId === req.userId)
   if (!group || !mine) {
-    res.status(404).json({ error: 'Ese grupo no existe o no sos miembro' })
+    res.status(404).json({ error: 'Ese grupo no existe o no eres miembro' })
     return
   }
 
@@ -479,7 +584,7 @@ app.patch('/api/groups/:id/me', requireAuth, async (req, res) => {
     include: { group: { include: { _count: { select: { members: true } } } } },
   })
   if (!membership) {
-    res.status(404).json({ error: 'No sos miembro de ese grupo' })
+    res.status(404).json({ error: 'No eres miembro de ese grupo' })
     return
   }
 
@@ -502,7 +607,7 @@ app.patch('/api/groups/:id/me', requireAuth, async (req, res) => {
 app.get('/api/groups/:id/feed', requireAuth, async (req, res) => {
   const groupId = String(req.params.id)
   if (!(await membershipOf(groupId, req.userId!))) {
-    res.status(404).json({ error: 'Ese grupo no existe o no sos miembro' })
+    res.status(404).json({ error: 'Ese grupo no existe o no eres miembro' })
     return
   }
 
@@ -577,7 +682,7 @@ app.get('/api/groups/:id/calendar', requireAuth, async (req, res) => {
 
   const mine = await membershipOf(groupId, req.userId!)
   if (!mine) {
-    res.status(404).json({ error: 'Ese grupo no existe o no sos miembro' })
+    res.status(404).json({ error: 'Ese grupo no existe o no eres miembro' })
     return
   }
 
@@ -621,6 +726,47 @@ app.get('/api/groups/:id/calendar', requireAuth, async (req, res) => {
     checkIns,
     weeks: summarizeWeeks(new Set(checkIns.map((checkIn) => checkIn.day)), mondays, goal, today),
   })
+})
+
+/* ---------------------------------------------------------------------------
+   Recap mensual
+   ------------------------------------------------------------------------- */
+
+/**
+ * Recap mensual del grupo. Sin `month` devuelve el del mes en curso, que se
+ * calcula al vuelo y viene marcado como `partial`.
+ *
+ * `earliestMonth` es el mes en que se creó el grupo: le sirve al cliente para
+ * saber hasta dónde puede retroceder.
+ */
+app.get('/api/groups/:id/recap', requireAuth, async (req, res) => {
+  const groupId = String(req.params.id)
+  if (!(await membershipOf(groupId, req.userId!))) {
+    res.status(404).json({ error: 'Ese grupo no existe o no eres miembro' })
+    return
+  }
+
+  const today = todayFor(req)
+  const month = String(req.query.month ?? today.slice(0, 7))
+  if (!/^\d{4}-\d{2}$/.test(month)) {
+    res.status(400).json({ error: 'Mes inválido' })
+    return
+  }
+  if (month > today.slice(0, 7)) {
+    res.status(400).json({ error: 'Ese mes todavía no llega' })
+    return
+  }
+
+  const [recap, group] = await Promise.all([
+    getRecap(groupId, month, today),
+    prisma.group.findUnique({ where: { id: groupId }, select: { createdAt: true } }),
+  ])
+  if (!recap) {
+    res.status(404).json({ error: 'No pudimos armar el recap' })
+    return
+  }
+
+  res.json({ ...recap, earliestMonth: group!.createdAt.toISOString().slice(0, 7) })
 })
 
 /* ---------------------------------------------------------------------------
@@ -710,7 +856,7 @@ app.get('/api/checkins/latest', requireAuth, async (req, res) => {
       select: { id: true },
     })
     if (!link) {
-      res.status(403).json({ error: 'Solo podés ver los check-ins de tus amigos' })
+      res.status(403).json({ error: 'Solo puedes ver los check-ins de tus amigos' })
       return
     }
   }
@@ -750,13 +896,87 @@ app.get('/api/checkins/:id', requireAuth, async (req, res) => {
     include: { user: { select: FRIEND_SELECT }, comments: { select: COMMENT_SELECT, orderBy: { createdAt: 'asc' } } },
   })
   if (!checkIn || !(await sharesGroup(req.userId!, checkIn.userId))) {
-    res.status(404).json({ error: 'Ese entrenamiento no existe o no lo podés ver' })
+    res.status(404).json({ error: 'Ese entrenamiento no existe o no lo puedes ver' })
     return
   }
   res.json(checkIn)
 })
 
 /** Comentar el check-in de alguien con quien compartís un grupo. */
+/**
+ * Editar el check-in propio. Se puede en cualquier momento, no solo el mismo
+ * día: alguien puede querer sumarle la foto o corregir lo que escribió más
+ * tarde, y no hay razón para prohibirlo.
+ *
+ * `removePhoto` borra la foto sin tocar el resto.
+ */
+const checkInPatchSchema = z
+  .object({
+    note: z.string().trim().max(280).nullable().optional(),
+    photoUrl: z.string().url().optional(),
+    photoPublicId: z.string().max(200).optional(),
+    removePhoto: z.boolean().optional(),
+  })
+  .refine((data) => !(data.removePhoto && data.photoUrl), {
+    message: 'No se puede quitar y poner la foto a la vez',
+  })
+
+app.patch('/api/checkins/:id', requireAuth, async (req, res) => {
+  const parsed = checkInPatchSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Cambios inválidos' })
+    return
+  }
+
+  const checkIn = await prisma.checkIn.findUnique({ where: { id: String(req.params.id) } })
+  // Solo el dueño: comentar el entreno ajeno sí, editarlo no.
+  if (!checkIn || checkIn.userId !== req.userId) {
+    res.status(404).json({ error: 'Ese entrenamiento no existe o no es tuyo' })
+    return
+  }
+
+  const { note, photoUrl, photoPublicId, removePhoto } = parsed.data
+
+  if (photoUrl && !isOwnCloudinaryUrl(photoUrl)) {
+    res.status(400).json({ error: 'Esa foto no es válida' })
+    return
+  }
+
+  // Si la foto se reemplaza o se quita, la vieja se va de Cloudinary. La
+  // excepción es cuando el public_id es el mismo: ahí ya la sobreescribimos.
+  const replacingPhoto = Boolean(removePhoto || (photoPublicId && photoPublicId !== checkIn.photoPublicId))
+  if (replacingPhoto && checkIn.photoPublicId) await deletePhoto(checkIn.photoPublicId)
+
+  const updated = await prisma.checkIn.update({
+    where: { id: checkIn.id },
+    data: {
+      ...(note !== undefined ? { note: note || null } : {}),
+      ...(removePhoto ? { photoUrl: null, photoPublicId: null } : {}),
+      ...(photoUrl ? { photoUrl, photoPublicId } : {}),
+    },
+  })
+  res.json(updated)
+})
+
+/**
+ * Deshacer un check-in. Vale para el de hoy y para cualquier otro propio:
+ * si alguien marcó por error, tiene que poder arrepentirse.
+ *
+ * Los comentarios se van con él por la cascada del schema, y la foto se borra
+ * de Cloudinary para no dejar archivos huérfanos.
+ */
+app.delete('/api/checkins/:id', requireAuth, async (req, res) => {
+  const checkIn = await prisma.checkIn.findUnique({ where: { id: String(req.params.id) } })
+  if (!checkIn || checkIn.userId !== req.userId) {
+    res.status(404).json({ error: 'Ese entrenamiento no existe o no es tuyo' })
+    return
+  }
+
+  if (checkIn.photoPublicId) await deletePhoto(checkIn.photoPublicId)
+  await prisma.checkIn.delete({ where: { id: checkIn.id } })
+  res.json({ ok: true })
+})
+
 app.post('/api/checkins/:id/comments', requireAuth, async (req, res) => {
   const parsed = z.object({ body: z.string().trim().min(1).max(280) }).safeParse(req.body)
   if (!parsed.success) {
@@ -769,7 +989,7 @@ app.post('/api/checkins/:id/comments', requireAuth, async (req, res) => {
     select: { id: true, userId: true },
   })
   if (!checkIn || !(await sharesGroup(req.userId!, checkIn.userId))) {
-    res.status(404).json({ error: 'Ese entrenamiento no existe o no lo podés comentar' })
+    res.status(404).json({ error: 'Ese entrenamiento no existe o no lo puedes comentar' })
     return
   }
 
@@ -790,4 +1010,6 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
 app.listen(PORT, () => {
   console.log(`[api] Top Training escuchando en http://localhost:${PORT}`)
   console.log(`[api] proveedores sociales activos: ${enabledProviders.join(', ') || 'ninguno (solo email)'}`)
+  console.log(`[api] fotos: ${storageConfigured ? 'Cloudinary' : 'sin configurar'}`)
+  startScheduler()
 })

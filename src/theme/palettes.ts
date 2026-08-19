@@ -59,7 +59,7 @@ export const PALETTES: Palette[] = [
   {
     id: 'pulse',
     name: 'Pulse',
-    tagline: 'Magenta de after. Sin vergüenza.',
+    tagline: 'Magenta de antro. Sin vergüenza.',
     swatch: { accent: '#FF3D9A', onAccent: '#1A0210', success: '#23D18B', warning: '#FFB02E', danger: '#FF5C43' },
   },
 ]

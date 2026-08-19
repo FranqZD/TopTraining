@@ -69,7 +69,7 @@ export function CreateGroupScreen() {
           placeholder="Cancún o muerte"
           maxLength={40}
           autoFocus
-          hint="El que van a ver todos los miembros."
+          hint="El que verán todos los miembros."
         />
 
         <section className="flex flex-col gap-3">
@@ -86,7 +86,7 @@ export function CreateGroupScreen() {
             ]}
           />
           <p className="text-caption text-text-faint">
-            Cada uno después puede ponerse su propia meta si quiere más (o menos) exigencia.
+            Cada quien puede ponerse su propia meta después, si quiere más (o menos) exigencia.
           </p>
         </section>
 
@@ -97,7 +97,7 @@ export function CreateGroupScreen() {
           {friends.length === 0 ? (
             <Card tone="outline">
               <p className="text-caption text-text-muted">
-                Todavía no tenés amigos aceptados. Podés crear el grupo igual y pasarles el código después.
+                Todavía no tienes amigos aceptados. Puedes crear el grupo de todos modos y pasarles el código después.
               </p>
             </Card>
           ) : (

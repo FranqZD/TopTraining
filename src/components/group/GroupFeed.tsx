@@ -67,8 +67,8 @@ export function GroupFeed({ groupId }: { groupId: string }) {
   if (items.length === 0) {
     return (
       <Card tone="outline" className="text-center">
-        <p className="text-body text-ink-200">Todavía no entrenó nadie.</p>
-        <p className="text-caption text-text-faint mt-1">Sé el primero y después cargalos a todos.</p>
+        <p className="text-body text-ink-200">Todavía no ha entrenado nadie.</p>
+        <p className="text-caption text-text-faint mt-1">Sé el primero y luego présumeles a todos.</p>
       </Card>
     )
   }

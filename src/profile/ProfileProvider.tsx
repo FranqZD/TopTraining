@@ -37,6 +37,19 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     void refresh()
   }, [refresh])
 
+  /**
+   * La zona horaria se manda sola. El cron de recordatorios la necesita para
+   * saber qué hora es PARA EL USUARIO, y preguntársela sería absurdo cuando el
+   * navegador ya la sabe.
+   */
+  useEffect(() => {
+    if (!profile) return
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    if (timeZone && timeZone !== profile.timeZone) {
+      void api.patch<Profile>('/me', { timeZone }).then(setProfile).catch(() => {})
+    }
+  }, [profile])
+
   const update = useCallback(async (patch: Partial<Profile>) => {
     const updated = await api.patch<Profile>('/me', patch)
     setProfile(updated)

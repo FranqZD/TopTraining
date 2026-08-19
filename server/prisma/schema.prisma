@@ -30,6 +30,9 @@ model User {
   targetWeightKg      Float?
   /// Entrenos por semana declarados en el onboarding (1..7)
   weeklyFrequency     Int?
+  /// Zona horaria IANA del dispositivo ("America/Argentina/Buenos_Aires").
+  /// La necesita el cron para saber qué hora es PARA EL USUARIO.
+  timeZone            String?
   /// Código para que un amigo te agregue sin buscar por nombre.
   friendCode          String  @unique
   onboardingCompleted Boolean @default(false)
@@ -42,6 +45,8 @@ model User {
   ownedGroups      Group[]       @relation("GroupOwner")
   groupMemberships GroupMember[]
   comments         Comment[]
+  pushSubscriptions PushSubscription[]
+  pushLogs          PushLog[]
 
   @@map("user")
 }
@@ -134,8 +139,29 @@ model Group {
 
   owner   User          @relation("GroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   members GroupMember[]
+  recaps  GroupRecap[]
 
   @@map("group")
+}
+
+/// Recap mensual congelado. Se genera el día 1 para el mes que terminó y no
+/// se vuelve a tocar: es una foto de cómo le fue al grupo ese mes.
+///
+/// `data` guarda el recap ya calculado en JSON. Es un snapshot de presentación,
+/// no una fuente de verdad: si mañana alguien borra un check-in viejo, el
+/// recap de marzo tiene que seguir diciendo lo que decía en abril.
+model GroupRecap {
+  id          String   @id @default(cuid())
+  groupId     String
+  /// Mes del recap, "YYYY-MM".
+  month       String
+  data        String
+  generatedAt DateTime @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, month])
+  @@map("group_recap")
 }
 
 model GroupMember {
@@ -176,6 +202,41 @@ model CheckIn {
 
   @@unique([userId, day])
   @@map("checkin")
+}
+
+/// Un dispositivo suscripto al push. Un usuario puede tener varios
+/// (teléfono, tablet, escritorio) y cada uno es una fila.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  /// URL del servicio de push del navegador. Identifica al dispositivo.
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscription")
+}
+
+/// Registro de lo que ya mandamos. El índice único es lo que garantiza
+/// "una notificación por usuario por día": si la fila existe, no se manda.
+model PushLog {
+  id        String   @id @default(cuid())
+  userId    String
+  /// Día local del usuario, "YYYY-MM-DD".
+  day       String
+  /// Tipo de aviso. Hoy solo "nudge" (todavía estás a tiempo).
+  kind      String
+  sentAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, day, kind])
+  @@map("push_log")
 }
 
 /// Comentario en el check-in de otro. Puede comentar cualquier miembro de

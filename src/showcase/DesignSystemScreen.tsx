@@ -50,13 +50,13 @@ export function DesignSystemScreen() {
             Training
           </h1>
           <p className="text-lead text-text-muted">
-            Entrenás con tus amigos. O te bancás ser <span className="text-accent-text font-bold">el más huevón</span> del
+            Entrenas con tus amigos. O te aguantas ser <span className="text-accent-text font-bold">el más huevón</span> del
             grupo.
           </p>
         </header>
 
         {/* ---------------- Tema ---------------- */}
-        <Section label="01 · Tema" title="Elegí tu paleta">
+        <Section label="01 · Tema" title="Elige tu paleta">
           <p className="text-caption text-text-muted -mt-1">
             Cambia el acento y sus derivados en toda la app. El carbón y la tipografía no se tocan nunca. Activa ahora:{' '}
             <span className="text-accent-text font-bold">{palette.name}</span>.
@@ -227,7 +227,7 @@ export function DesignSystemScreen() {
           </p>
           <Card>
             <CardTitle>¿Cuántas veces por semana?</CardTitle>
-            <p className="text-caption text-text-faint mt-1 mb-4">Sé honesto, después no llores.</p>
+            <p className="text-caption text-text-faint mt-1 mb-4">Sé honesto, luego no llores.</p>
             <ChoiceGroup
               label="Frecuencia semanal"
               columns={4}

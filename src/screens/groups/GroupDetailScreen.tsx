@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import { AnimatePresence, motion } from 'motion/react'
-import { ArrowLeft, Check, ChevronDown, Copy, Crown } from 'lucide-react'
+import { ArrowLeft, Check, ChevronDown, ChevronRight, Copy, Crown, Trophy } from 'lucide-react'
 import { Avatar, Button, Card, CardLabel, ChoiceGroup, SegmentedControl, cn } from '../../components/ui'
 import { GroupFeed } from '../../components/group/GroupFeed'
 import { GroupCalendar } from '../../components/group/GroupCalendar'
@@ -64,7 +64,7 @@ export function GroupDetailScreen() {
     return (
       <div className="min-h-dvh bg-canvas grid place-items-center px-5">
         <div className="text-center flex flex-col gap-4">
-          <p className="text-title">Este grupo no existe o no sos miembro.</p>
+          <p className="text-title">Este grupo no existe o no eres miembro.</p>
           <Button variant="secondary" onClick={() => navigate('/')}>
             Volver
           </Button>
@@ -141,11 +141,11 @@ export function GroupDetailScreen() {
                   </Card>
 
                   <div className="flex flex-col gap-3">
-                    <CardLabel className="mb-0">Tu meta acá</CardLabel>
+                    <CardLabel className="mb-0">Tu meta aquí</CardLabel>
                     <p className="text-caption text-text-muted -mt-1">
                       {group.personalGoal === null
-                        ? `Estás siguiendo la del grupo: ${group.baseGoal} por semana.`
-                        : `Te pusiste ${group.personalGoal} por semana en vez de ${group.baseGoal}.`}
+                        ? `Vas con la del grupo: ${group.baseGoal} por semana.`
+                        : `Te pusiste ${group.personalGoal} por semana en lugar de ${group.baseGoal}.`}
                     </p>
                     <ChoiceGroup
                       label="Tu meta personal en este grupo"
@@ -177,7 +177,7 @@ export function GroupDetailScreen() {
                         <Avatar name={member.name} image={member.image} size={36} />
                         <span className="flex-1 min-w-0 flex items-center gap-1.5">
                           <span className="font-bold truncate leading-tight">{member.name}</span>
-                          {member.isMe && <span className="tape text-accent">vos</span>}
+                          {member.isMe && <span className="tape text-accent">tú</span>}
                           {member.role === 'owner' && (
                             <Crown size={13} strokeWidth={2.5} className="text-warning shrink-0" />
                           )}
@@ -196,6 +196,22 @@ export function GroupDetailScreen() {
             )}
           </AnimatePresence>
         </section>
+
+        {/* --- Recap: no entra en el toggle porque no es un "modo" del grupo,
+                es una pantalla aparte que se mira una vez por mes. --- */}
+        <Link
+          to={`/groups/${group.id}/recap`}
+          className="pressable flex items-center gap-3 px-3.5 py-3 rounded-[var(--radius-md)] bg-ink-900 border border-ink-700 hover:border-accent cursor-pointer"
+        >
+          <span className="grid place-items-center size-9 shrink-0 rounded-[var(--radius-sm)] bg-accent-tint text-accent">
+            <Trophy size={18} strokeWidth={2.5} />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block font-bold leading-tight">Recap del mes</span>
+            <span className="block tape text-text-faint">quién la rompió y quién no</span>
+          </span>
+          <ChevronRight size={18} strokeWidth={2.5} className="text-ink-500 shrink-0" />
+        </Link>
 
         {/* --- El toggle: los dos modos del grupo --- */}
         <SegmentedControl
