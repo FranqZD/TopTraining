@@ -36,10 +36,30 @@ src/index.css           ← base + utilidades de marca (.num .tape .notch .hatch
 src/theme/palettes.ts   ← catálogo en TS (tipo ThemeId = campo User.theme)
 src/theme/ThemeProvider.tsx ← aplica y persiste el tema
 src/components/ui/      ← componentes base
+src/components/brand/   ← marcas de Google/Apple (única excepción a "solo lucide")
 src/showcase/           ← pantalla de referencia visual (no es producto)
 ```
 
 Ver el sistema andando: `npm run dev`.
+
+### 2.1 Inventario de componentes
+
+| Componente | Para qué | Teclado |
+|---|---|---|
+| `Button` | 4 variantes (primary/secondary/ghost/danger) × 3 tamaños | — |
+| `Card` + `CardLabel` `CardTitle` | superficies: base, raised, accent, outline; `notch` opcional | — |
+| `ChoiceGroup` | **el primitivo de "sin teclado"**: opciones acotadas en grilla táctil | no |
+| `SegmentedControl` | alternar 2–3 vistas, con píldora de acento deslizándose | no |
+| `NumberStepper` | número grande con −/+ (peso objetivo) | opcional |
+| `DayMark` / `StreakBadge` | cumplido · perdido · hoy · sin datos · racha | — |
+| `ProgressBar` | progreso por pasos (onboarding) | — |
+| `CheckRow` | selección múltiple (a qué amigos meto al grupo); toda la fila es táctil | no |
+| `WeekStreakSlot` | hueco reservado de la racha semanal en listas de gente | — |
+| `Sheet` | hoja inferior (vista de un entreno, selector de miembro) | no |
+| `StreakLabel` | la racha en una línea: días, semanas o "racha rota" | — |
+| `ThemePicker` | las 5 paletas como swatches | no |
+| `Avatar` | iniciales o foto del proveedor social | — |
+| `TextField` | **último recurso**: nombre, email, contraseña, peso, código, búsqueda | sí |
 
 ---
 
@@ -208,7 +228,42 @@ No hay paso 3. Ningún componente se toca.
 
 ---
 
-## 9. Pendientes conocidos
+## 9. Cómo se aplicó en auth + onboarding
+
+Referencia de que el sistema aguanta pantallas reales:
+
+- **Login:** los dos botones sociales son `Button` grandes; el email queda
+  plegado detrás de un `SegmentedControl`. Solo dos campos de texto.
+- **Onboarding:** 5 pasos con `ProgressBar`. Únicamente el paso 1 (nombre) y el
+  3 (peso) abren teclado; horario, frecuencia y las pestañas de amigos son
+  `ChoiceGroup` / `SegmentedControl`.
+- **Reacción a la frecuencia:** el tono escala de neutro a `danger` reusando
+  los colores de estado, así que se repinta con la paleta del usuario. El 5
+  (el sweet spot) es el único que lleva `notch` + glow de `success`.
+- **Ajustes:** sin botón "Guardar" — cada control persiste al tocarlo, con un
+  `tape` verde de "guardado" al lado del label.
+- **Amigos y grupos:** las solicitudes pendientes van arriba en `Card`
+  `tone="accent"` porque son lo único que pide acción; la meta base del grupo
+  y la meta personal usan el mismo `ChoiceGroup`, así que elegir "5×" se ve
+  igual en el onboarding, en Ajustes y adentro del grupo.
+- **Check-in:** la pantalla con menos fricción de la app. El botón de confirmar
+  nunca se deshabilita ni espera a que llenes algo, y la descripción se arma
+  con chips (`Piernas`, `Cardio`, …) — el comentario libre está detrás de un
+  botón, así el teclado no aparece salvo que lo pidas. Al confirmar, la marca
+  de "cumplido" entra con resorte a pantalla completa.
+- **Grupo:** los dos modos se alternan con el mismo `SegmentedControl` del
+  login y del onboarding. Los datos del grupo (código, tu meta, miembros) van
+  en un panel plegado: se consultan de vez en cuando y no compiten con el
+  contenido.
+- **Calendario:** un día sin check-in se dibuja como texto, no como botón —
+  si no hay nada que abrir, el dedo no debería creer que sí. La octava columna
+  reusa la llama del acento y la equis sobre trama diagonal de `DayMark`.
+- **Modales:** siempre hoja inferior, nunca modal centrado. En una app que se
+  usa con una mano, lo importante tiene que caer cerca del pulgar.
+
+---
+
+## 10. Pendientes conocidos
 
 - Fuente servida desde Google Fonts. Antes de la PWA offline conviene
   auto-hospedarla (`@fontsource-variable/archivo`) para no depender de la red.

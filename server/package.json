@@ -1,0 +1,36 @@
+{
+  "name": "toptraining-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "db:push": "prisma db push",
+    "db:generate": "prisma generate",
+    "db:studio": "prisma studio",
+    "auth:generate": "better-auth generate --config src/auth.ts --output ../prisma/schema.prisma",
+    "test:streaks": "tsx streaks-check.ts",
+    "db:seed": "tsx prisma/seed-dev.ts"
+  },
+  "dependencies": {
+    "@node-rs/argon2": "^2.1.0",
+    "@prisma/adapter-better-sqlite3": "^7.9.1",
+    "@prisma/client": "^7.9.1",
+    "better-auth": "^1.7.1",
+    "cloudinary": "^2.10.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@better-auth/cli": "^1.4.22",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.2.0",
+    "prisma": "^7.9.1",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2"
+  }
+}

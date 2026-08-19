@@ -1,0 +1,195 @@
+// Top Training — schema
+//
+// Los modelos User / Session / Account / Verification son los que exige
+// better-auth. User además lleva los campos de producto de Top Training
+// (declarados en auth.ts como `user.additionalFields`).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // --- Perfil de Top Training (se completa en el onboarding) ---
+  /// Paleta de acento elegida. Ver ThemeId en el frontend.
+  theme               String  @default("ember")
+  /// morning | afternoon | night
+  trainingSlot        String?
+  targetWeightKg      Float?
+  /// Entrenos por semana declarados en el onboarding (1..7)
+  weeklyFrequency     Int?
+  /// Código para que un amigo te agregue sin buscar por nombre.
+  friendCode          String  @unique
+  onboardingCompleted Boolean @default(false)
+
+  sessions Session[]
+  accounts Account[]
+  checkIns CheckIn[]
+  sentRequests     Friendship[]  @relation("FriendshipSent")
+  receivedRequests Friendship[]  @relation("FriendshipReceived")
+  ownedGroups      Group[]       @relation("GroupOwner")
+  groupMemberships GroupMember[]
+  comments         Comment[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  /// Emisor de la identidad. better-auth usa "local:..." para email+password
+  /// y "local:oauth:<provider>" / el issuer real del proveedor para OAuth.
+  issuer                String
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  /// Hash argon2id. Null en cuentas de Google/Apple.
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([issuer, accountId])
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// --- Dominio de Top Training ---------------------------------------------
+
+/// Solicitud de amistad. Una sola fila por par, con dirección:
+/// `requester` la mandó, `addressee` la tiene que aceptar.
+/// Son amigos recién cuando status == "accepted".
+model Friendship {
+  id          String    @id @default(cuid())
+  requesterId String
+  addresseeId String
+  /// pending | accepted
+  status      String    @default("pending")
+  createdAt   DateTime  @default(now())
+  respondedAt DateTime?
+
+  requester User @relation("FriendshipSent", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee User @relation("FriendshipReceived", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId, status])
+  @@map("friendship")
+}
+
+/// Grupo de entrenamiento. La meta base es del grupo; cada miembro puede
+/// pisarla con la suya (ver GroupMember.personalGoal).
+model Group {
+  id         String   @id @default(cuid())
+  name       String
+  /// Entrenos por semana que el grupo se propone: 3, 4 o 5.
+  baseGoal   Int
+  /// Código para sumarse sin que nadie te invite a mano.
+  inviteCode String   @unique
+  ownerId    String
+  createdAt  DateTime @default(now())
+
+  owner   User          @relation("GroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members GroupMember[]
+
+  @@map("group")
+}
+
+model GroupMember {
+  id      String @id @default(cuid())
+  groupId String
+  userId  String
+  /// Meta propia dentro del grupo. Si es null, hereda `Group.baseGoal`.
+  personalGoal Int?
+  /// owner | member
+  role     String   @default("member")
+  joinedAt DateTime @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+  @@map("group_member")
+}
+
+model CheckIn {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Día local del check-in, "YYYY-MM-DD". Un check-in por día y usuario.
+  day    String
+  /// Descripción libre. Opcional: el check-in se confirma con un solo toque.
+  note   String?
+  /// Foto en Cloudinary. Opcional.
+  photoUrl      String?
+  /// public_id de Cloudinary, para poder borrar el archivo si se borra el check-in.
+  photoPublicId String?
+  createdAt DateTime @default(now())
+
+  /// Además de garantizar un check-in por día, este índice único es el que
+  /// resuelve "último check-in de un usuario" (userId + day desc) sin scan.
+  comments Comment[]
+
+  @@unique([userId, day])
+  @@map("checkin")
+}
+
+/// Comentario en el check-in de otro. Puede comentar cualquier miembro de
+/// algún grupo que comparta con el autor del check-in.
+model Comment {
+  id        String   @id @default(cuid())
+  checkInId String
+  userId    String
+  body      String
+  createdAt DateTime @default(now())
+
+  checkIn CheckIn @relation(fields: [checkInId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([checkInId, createdAt])
+  @@map("comment")
+}
