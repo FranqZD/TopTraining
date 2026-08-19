@@ -1,7 +1,6 @@
 import 'dotenv/config'
 import { betterAuth } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
-import { hash as argonHash, verify as argonVerify } from '@node-rs/argon2'
 import { prisma } from './db.js'
 import { generateFriendCode } from './codes.js'
 
@@ -52,11 +51,6 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
-    // El pedido era bcrypt o argon2: usamos argon2id, que es lo recomendado hoy.
-    password: {
-      hash: (password) => argonHash(password, { algorithm: 2 /* argon2id */ }),
-      verify: ({ hash, password }) => argonVerify(hash, password),
-    },
   },
 
   /**
