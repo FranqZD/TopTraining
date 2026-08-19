@@ -24,6 +24,12 @@ export default {
     headers.delete('host')
     headers.set('x-forwarded-host', incoming.host)
     headers.set('x-forwarded-proto', incoming.protocol.replace(':', ''))
+    const clientIp = request.headers.get('cf-connecting-ip')
+    if (clientIp) {
+      headers.set('cf-connecting-ip', clientIp)
+      headers.set('x-forwarded-for', clientIp)
+      headers.set('x-real-ip', clientIp)
+    }
 
     const init: RequestInit & { duplex?: 'half' } = {
       method: request.method,

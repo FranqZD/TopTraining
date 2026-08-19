@@ -89,7 +89,9 @@ export const auth = betterAuth({
 
   trustedOrigins,
   advanced: {
-    // En prod el Worker proxea /api: el origen del browser es Pages, no onrender.com.
+    ipAddress: {
+      ipAddressHeaders: ['cf-connecting-ip', 'x-forwarded-for', 'x-real-ip'],
+    },
     defaultCookieAttributes: {
       sameSite: 'lax',
       secure: AUTH_URL.startsWith('https://'),
