@@ -1,0 +1,123 @@
+@import 'tailwindcss';
+@import './styles/tokens.css';
+@import './styles/themes.css';
+
+/* ============================================================================
+   BASE
+   ========================================================================== */
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    background-color: var(--color-ink-1000);
+    color-scheme: dark;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background-color: var(--color-canvas);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: 1.5;
+    font-variation-settings: 'wdth' 100;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overscroll-behavior-y: none;
+  }
+
+  /* Los titulares de Top Training son anchos, apretados y en caja alta cuando
+     gritan. Nunca centrados por defecto: la marca habla de frente. */
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    font-variation-settings: 'wdth' 112;
+    letter-spacing: var(--tracking-tighter);
+    font-weight: 800;
+    margin: 0;
+  }
+
+  button, input, select, textarea {
+    font: inherit;
+    color: inherit;
+  }
+
+  /* Foco visible y con el color del tema, en toda la app. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-xs);
+  }
+
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+  }
+}
+
+/* ============================================================================
+   UTILIDADES DE MARCA
+   Firmas visuales reutilizables. Si una pantalla necesita "ese look",
+   usa una de estas — no reimplementa el efecto.
+   ========================================================================== */
+@layer utilities {
+  /* Números grandes: Expanded + tabular. Rachas, %, contadores. */
+  .num {
+    font-variation-settings: 'wdth' 118;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: var(--tracking-tightest);
+    font-weight: 800;
+  }
+
+  /* Label "de cinta": micro, mayúsculas, muy espaciado. El sello de la marca. */
+  .tape {
+    font-size: var(--text-micro);
+    line-height: 1;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-widest);
+    font-variation-settings: 'wdth' 96;
+  }
+
+  /* Esquina cortada en diagonal: detalle técnico/atlético de la marca.
+     Se usa con moderación — piezas destacadas, no todas las cards. */
+  .notch {
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%);
+  }
+
+  /* Trama diagonal para zonas "vacías" o de fondo (días sin actividad). */
+  .hatch {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      var(--color-ink-800) 0 1px,
+      transparent 1px 7px
+    );
+  }
+
+  /* Presión física: todo lo tocable se hunde apenas al presionar. */
+  .pressable {
+    transition:
+      transform var(--duration-instant) var(--ease-snap),
+      background-color var(--duration-fast) var(--ease-snap),
+      border-color var(--duration-fast) var(--ease-snap),
+      box-shadow var(--duration-fast) var(--ease-snap);
+  }
+  .pressable:active {
+    transform: scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .pressable:active {
+    transform: none;
+  }
+}

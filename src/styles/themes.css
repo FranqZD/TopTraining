@@ -1,0 +1,92 @@
+/* ============================================================================
+   TOP TRAINING — PALETAS DE ACENTO
+   El usuario elige una de estas 5 desde Ajustes (o al final del onboarding).
+   Se guarda en User.theme y se aplica pintando data-theme="<id>" en <html>.
+
+   PARA AGREGAR UNA PALETA NUEVA: copiá un bloque :root[data-theme="..."],
+   cambiá los 6 valores base y agregala a src/theme/palettes.ts. Nada más.
+   Todo lo derivado (hover, tinte, glow, anillo de foco) se calcula solo.
+
+   Reglas que ninguna paleta puede romper:
+   1. El acento se lee sobre carbón con contraste >= 4.5:1.
+   2. El texto sobre el acento es SIEMPRE casi negro (--color-on-accent):
+      es una firma de marca y garantiza legibilidad en las 5 paletas.
+   3. success / warning / danger mantienen su significado y se separan en
+      matiz del acento, para que "racha activa" nunca se confunda con marca.
+   ========================================================================== */
+
+@theme static {
+  /* Valores por defecto = paleta "ember". Tailwind genera acá las utilidades
+     bg-accent, text-success, border-accent-line, etc. */
+  --color-accent: #FF4E33;
+  --color-accent-strong: #FF6B52;
+  --color-on-accent: #180502;
+  --color-success: #23D18B;  /* cumplido / racha activa */
+  --color-warning: #FFC13D;  /* en riesgo / te queda poco */
+  --color-danger: #F4364C;   /* no cumplido / racha rota */
+  --color-idle: var(--color-ink-600); /* sin actividad — igual en todos los temas */
+
+  /* --- Derivados: se calculan desde el acento, nunca se escriben a mano --- */
+  --color-accent-tint: color-mix(in oklab, var(--color-accent) 14%, transparent);
+  --color-accent-tint-strong: color-mix(in oklab, var(--color-accent) 26%, transparent);
+  --color-accent-line: color-mix(in oklab, var(--color-accent) 34%, transparent);
+  --color-accent-dim: color-mix(in oklab, var(--color-accent) 70%, var(--color-ink-950));
+  --color-accent-text: color-mix(in oklab, var(--color-accent) 88%, var(--color-ink-50));
+
+  --color-success-tint: color-mix(in oklab, var(--color-success) 16%, transparent);
+  --color-warning-tint: color-mix(in oklab, var(--color-warning) 16%, transparent);
+  --color-danger-tint: color-mix(in oklab, var(--color-danger) 16%, transparent);
+
+  --shadow-accent: 0 10px 30px -12px color-mix(in oklab, var(--color-accent) 60%, transparent);
+  --shadow-accent-sm: 0 6px 18px -10px color-mix(in oklab, var(--color-accent) 55%, transparent);
+}
+
+/* --- 1. EMBER — coral eléctrico. Urgencia, calor, "movete". (default) ----- */
+:root[data-theme='ember'] {
+  --color-accent: #FF4E33;
+  --color-accent-strong: #FF6B52;
+  --color-on-accent: #180502;
+  --color-success: #23D18B;
+  --color-warning: #FFC13D;
+  --color-danger: #F4364C;
+}
+
+/* --- 2. VOLTAGE — verde lima eléctrico. Energía cruda, casi fluorescente. - */
+:root[data-theme='voltage'] {
+  --color-accent: #C9F73C;
+  --color-accent-strong: #DBFF6E;
+  --color-on-accent: #101600;
+  --color-success: #2ED9A4;  /* verde-azulado: no compite con el lima */
+  --color-warning: #FFA51F;
+  --color-danger: #FF4A5E;
+}
+
+/* --- 3. PLASMA — azul eléctrico. Frío, técnico, disciplinado. ------------- */
+:root[data-theme='plasma'] {
+  --color-accent: #3BA0FF;
+  --color-accent-strong: #63B6FF;
+  --color-on-accent: #00101F;
+  --color-success: #23D18B;
+  --color-warning: #FFB02E;
+  --color-danger: #FF4A5E;
+}
+
+/* --- 4. MAGMA — ámbar intenso. Oro, medalla, recompensa. ------------------ */
+:root[data-theme='magma'] {
+  --color-accent: #FFAE1A;
+  --color-accent-strong: #FFC64D;
+  --color-on-accent: #1A0F00;
+  --color-success: #23D18B;
+  --color-warning: #FF7A1A;  /* naranja quemado: se separa del ámbar */
+  --color-danger: #F4364C;
+}
+
+/* --- 5. PULSE — magenta vibrante. Nocturno, fiesta, provocador. ----------- */
+:root[data-theme='pulse'] {
+  --color-accent: #FF3D9A;
+  --color-accent-strong: #FF6BB2;
+  --color-on-accent: #1A0210;
+  --color-success: #23D18B;
+  --color-warning: #FFB02E;
+  --color-danger: #FF5C43;   /* rojo-coral: se separa del magenta */
+}
