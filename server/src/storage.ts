@@ -1,91 +1,105 @@
 import 'dotenv/config'
-import { v2 as cloudinary } from 'cloudinary'
+import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 /**
- * Fotos de check-in en Cloudinary.
+ * Fotos de check-in en R2. Las miniaturas las recorta Cloudflare Images
+ * (transformaciones sobre el original), no se guardan aparte.
  *
- * Elegí Cloudinary sobre S3 porque no hay que crear bucket, política IAM ni
- * configurar CORS: con tres variables de entorno ya sube, y encima sirve las
- * imágenes optimizadas y redimensionadas sin infraestructura extra.
- *
- * El navegador sube DIRECTO a Cloudinary con una firma que emite este servidor.
- * Así los bytes de la foto no pasan por nuestro API (menos latencia en el paso
- * más pesado del check-in) y la clave secreta nunca sale de acá.
+ * El navegador sube DIRECTO a R2 con un PUT prefirmado que emite este
+ * servidor. Los bytes no pasan por nuestro API y la clave secreta nunca
+ * sale de acá.
  */
 
-const CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME
-const API_KEY = process.env.CLOUDINARY_API_KEY
-const API_SECRET = process.env.CLOUDINARY_API_SECRET
+const ACCOUNT_ID = process.env.R2_ACCOUNT_ID
+const ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID
+const SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY
+const BUCKET = process.env.R2_BUCKET
+const PUBLIC_BASE = stripSlash(process.env.R2_PUBLIC_URL ?? '')
+/** Zona con Image Transformations. Vacío en local: el feed sirve el original. */
+export const imageTransformBase = stripSlash(process.env.IMAGE_TRANSFORM_BASE ?? '') || null
 
-/** Carpeta donde caen todas las fotos de check-in. */
-export const UPLOAD_FOLDER = 'toptraining/checkins'
+const PREFIX = 'checkins'
+const CONTENT_TYPE = 'image/jpeg'
 
-export const storageConfigured = Boolean(CLOUD_NAME && API_KEY && API_SECRET)
+export const storageConfigured = Boolean(
+  ACCOUNT_ID && ACCESS_KEY_ID && SECRET_ACCESS_KEY && BUCKET && PUBLIC_BASE,
+)
 
-if (storageConfigured) {
-  cloudinary.config({
-    cloud_name: CLOUD_NAME,
-    api_key: API_KEY,
-    api_secret: API_SECRET,
-    secure: true,
-  })
+let client: S3Client | null = null
+
+function r2(): S3Client {
+  if (!client) {
+    client = new S3Client({
+      region: 'auto',
+      endpoint: `https://${ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      credentials: {
+        accessKeyId: ACCESS_KEY_ID!,
+        secretAccessKey: SECRET_ACCESS_KEY!,
+      },
+      // AWS SDK v3 firma CRC32 por default y R2 lo rechaza.
+      requestChecksumCalculation: 'WHEN_REQUIRED',
+      responseChecksumValidation: 'WHEN_REQUIRED',
+    })
+  }
+  return client
 }
 
 export interface UploadSignature {
-  cloudName: string
-  apiKey: string
-  folder: string
-  /** El cliente tiene que mandar exactamente este public_id: va firmado. */
-  publicId: string
-  timestamp: number
-  signature: string
+  /** PUT prefirmado. El cliente manda el JPEG acá, no a nuestro API. */
   uploadUrl: string
+  /** Lo que se guarda en CheckIn.photoUrl. */
+  publicUrl: string
+  /** Key del objeto. Va en CheckIn.photoPublicId para poder borrar. */
+  publicId: string
+  /** Tiene que ir en el PUT: está firmado. */
+  contentType: string
 }
 
 /**
  * Firma una subida para un usuario concreto.
  *
- * `public_id` lo fijamos nosotros (usuario + día) y va firmado: el cliente no
- * puede subir a un nombre arbitrario ni pisar la foto de otro. Como el nombre
- * es determinístico, rehacer la foto del mismo día sobreescribe en vez de
- * dejar archivos huérfanos dando vueltas.
+ * El key lo fijamos nosotros (`checkins/<userId>_<día>.jpg`) y va dentro de
+ * la URL firmada: el cliente no puede subir a un nombre arbitrario ni pisar
+ * la foto de otro. Como el nombre es determinístico, rehacer la foto del
+ * mismo día sobreescribe en vez de dejar archivos huérfanos.
  */
-export function createUploadSignature(userId: string, day: string): UploadSignature {
-  if (!storageConfigured) throw new Error('Cloudinary no está configurado')
+export async function createUploadSignature(userId: string, day: string): Promise<UploadSignature> {
+  if (!storageConfigured) throw new Error('R2 no está configurado')
 
-  const timestamp = Math.round(Date.now() / 1000)
-  const publicId = `${userId}_${day}`
-
-  const signature = cloudinary.utils.api_sign_request(
-    { folder: UPLOAD_FOLDER, public_id: publicId, timestamp, overwrite: 'true', invalidate: 'true' },
-    API_SECRET!,
+  const publicId = `${PREFIX}/${userId}_${day}.jpg`
+  const uploadUrl = await getSignedUrl(
+    r2(),
+    new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: publicId,
+      ContentType: CONTENT_TYPE,
+    }),
+    { expiresIn: 120 },
   )
 
   return {
-    cloudName: CLOUD_NAME!,
-    apiKey: API_KEY!,
-    folder: UPLOAD_FOLDER,
+    uploadUrl,
+    publicUrl: `${PUBLIC_BASE}/${publicId}`,
     publicId,
-    timestamp,
-    signature,
-    uploadUrl: `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+    contentType: CONTENT_TYPE,
   }
 }
 
 /**
- * El cliente nos manda la URL que le devolvió Cloudinary. Antes de guardarla
- * comprobamos que sea realmente de nuestra cuenta y de nuestra carpeta: si no,
- * cualquiera podría guardar un link a un servidor ajeno en su check-in.
+ * El cliente nos manda la URL pública. Antes de guardarla comprobamos que
+ * sea de nuestro bucket y de nuestra carpeta: si no, cualquiera podría
+ * guardar un link a un servidor ajeno en su check-in.
  */
-export function isOwnCloudinaryUrl(url: string): boolean {
+export function isOwnPhotoUrl(url: string): boolean {
   if (!storageConfigured) return false
   try {
     const parsed = new URL(url)
+    const expected = new URL(PUBLIC_BASE)
     return (
-      parsed.protocol === 'https:' &&
-      parsed.hostname === 'res.cloudinary.com' &&
-      parsed.pathname.startsWith(`/${CLOUD_NAME}/`) &&
-      parsed.pathname.includes(UPLOAD_FOLDER)
+      parsed.protocol === expected.protocol &&
+      parsed.host === expected.host &&
+      /^\/checkins\/[^/]+_\d{4}-\d{2}-\d{2}\.jpg$/.test(parsed.pathname)
     )
   } catch {
     return false
@@ -93,8 +107,8 @@ export function isOwnCloudinaryUrl(url: string): boolean {
 }
 
 /**
- * Borra la foto de Cloudinary. Se llama al quitar la foto de un check-in o al
- * deshacerlo entero: si no, el archivo queda pagando alojamiento para siempre.
+ * Borra el objeto de R2. Se llama al quitar la foto de un check-in o al
+ * deshacerlo entero: si no, el archivo queda ocupando el bucket para siempre.
  *
  * Nunca hace fallar la operación de arriba — que la foto sobreviva un borrado
  * es feo, pero bloquear al usuario por eso es peor.
@@ -102,8 +116,12 @@ export function isOwnCloudinaryUrl(url: string): boolean {
 export async function deletePhoto(publicId: string): Promise<void> {
   if (!storageConfigured) return
   try {
-    await cloudinary.uploader.destroy(publicId, { invalidate: true })
+    await r2().send(new DeleteObjectCommand({ Bucket: BUCKET, Key: publicId }))
   } catch (error) {
     console.error('[storage] no se pudo borrar la foto:', publicId, error)
   }
+}
+
+function stripSlash(value: string): string {
+  return value.replace(/\/+$/, '')
 }

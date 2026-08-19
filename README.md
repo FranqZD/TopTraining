@@ -11,9 +11,9 @@ cumplir metas de entrenamiento antes de un viaje.
 |---|---|
 | Frontend | Vite · React 19 · TypeScript · Tailwind v4 (CSS-first) · react-router · motion · lucide |
 | Backend | Express 5 · better-auth · Prisma 7 (SQLite en dev) · zod |
-| Fotos | Cloudinary (subida firmada directa desde el navegador) |
+| Fotos | R2 (PUT firmado) + Cloudflare Images (miniaturas) |
 | Push | Web Push directo (VAPID) + service worker propio |
-| Auth | Google OAuth · Apple OAuth · email + contraseña (argon2id) |
+| Auth | email + contraseña (argon2id) |
 
 ## Arranque
 
@@ -26,22 +26,8 @@ npm run dev     # web en :5173 + api en :8787
 de Vite (`/api` → `:8787`), así que en desarrollo todo es el mismo origen y la
 cookie de sesión no necesita CORS.
 
-Con esto ya podés registrarte con email y contraseña. Google y Apple aparecen
-en la pantalla de login marcados como "sin configurar" hasta que cargues las
-credenciales.
-
-## OAuth (opcional en dev)
-
-Copiá `server/.env.example` a `server/.env` y completá lo que vayas a usar.
-El servidor solo registra los proveedores que tienen credenciales, y expone en
-`GET /api/config` cuáles están activos para que el login no muestre botones
-que van a fallar.
-
-- **Google:** Google Cloud Console → Credenciales → ID de cliente OAuth (app web).
-  Redirect URI: `http://localhost:8787/api/auth/callback/google`
-- **Apple:** requiere Apple Developer Program (de pago). El `client secret` es
-  un JWT firmado con la clave `.p8` y caduca a los 6 meses.
-  Redirect URI: `http://localhost:8787/api/auth/callback/apple`
+Con esto ya podés registrarte con email y contraseña. Google y Apple están
+pausados: el login no los ofrece.
 
 ## Sesión
 
@@ -52,7 +38,7 @@ de uso. Es una app de uso diario: nadie debería volver a ver el login.
 
 | Método | Ruta | Qué hace |
 |---|---|---|
-| `ALL` | `/api/auth/*` | better-auth (registro, login, OAuth, logout) |
+| `ALL` | `/api/auth/*` | better-auth (registro, login, logout) |
 | `GET` | `/api/config` | proveedores sociales activos |
 | `GET` `PATCH` | `/api/me` | perfil (nombre, horario, peso, frecuencia, tema) |
 | `GET` | `/api/friends` | amigos con su racha ya calculada |
@@ -64,7 +50,7 @@ de uso. Es una app de uso diario: nadie debería volver a ver el login.
 | `POST` | `/api/groups/join` | sumarse con el código del grupo |
 | `GET` | `/api/groups/:id` | detalle con miembros y metas efectivas |
 | `PATCH` | `/api/groups/:id/me` | tu meta personal (`null` = heredar la del grupo) |
-| `POST` | `/api/uploads/checkin-signature` | firma para subir la foto a Cloudinary |
+| `POST` | `/api/uploads/checkin-signature` | PUT prefirmado para subir la foto a R2 |
 | `POST` | `/api/checkins` | marcar el día (409 si ya marcó) |
 | `GET` | `/api/checkins/latest` | último check-in propio o `?userId=` de un amigo |
 | `GET` | `/api/checkins` | tus últimos 60 días |
@@ -110,25 +96,27 @@ server/
 | `/settings` | ajustes y paleta |
 | `/design` | muestrario del sistema de diseño |
 
-## Fotos de check-in (Cloudinary)
+## Fotos de check-in (R2 + Cloudflare Images)
 
-Elegí Cloudinary sobre S3 porque no hay que crear bucket, política IAM ni
-configurar CORS: con tres variables de entorno ya sube, y encima sirve las
-imágenes optimizadas desde su CDN.
+El original vive en R2. Las miniaturas del feed y el calendario las recorta
+Cloudflare Images (`/cdn-cgi/image/...`) a partir de esa URL; el detalle
+sirve el JPEG entero para no gastar transforms.
 
-Cargá `CLOUDINARY_*` en `server/.env` (ver `.env.example`). **Sin esas
-variables el check-in funciona igual, solo que sin foto**: el servidor lo
-informa en `GET /api/config` y la pantalla esconde la sección.
+Cargá `R2_*` en `server/.env` (ver `.env.example`). **Sin esas variables el
+check-in funciona igual, solo que sin foto**: el servidor lo informa en
+`GET /api/config` y la pantalla esconde la sección. `IMAGE_TRANSFORM_BASE`
+es opcional: en local el feed muestra el original.
 
-El navegador sube **directo a Cloudinary** con una firma que emite el servidor,
-así los bytes no pasan por nuestro API y la clave secreta nunca sale de él.
+El navegador sube **directo a R2** con un PUT que firma el servidor, así los
+bytes no pasan por nuestro API y la clave secreta nunca sale de él.
 Tres detalles que hacen que esto sea seguro y prolijo:
 
-- El `public_id` lo fija el servidor (`<userId>_<día>`) y va **dentro de la
-  firma**: nadie puede subir con un nombre arbitrario ni pisar la foto de otro.
+- El key lo fija el servidor (`checkins/<userId>_<día>.jpg`) y va **dentro
+  de la URL firmada**: nadie puede subir con un nombre arbitrario ni pisar
+  la foto de otro.
 - Como el nombre es determinístico, rehacer la foto del mismo día sobreescribe
   en vez de dejar archivos huérfanos.
-- La URL que devuelve el cliente se valida contra nuestra cuenta y carpeta
+- La URL que devuelve el cliente se valida contra nuestro host y carpeta
   antes de guardarla, así no se puede colar un link a un servidor ajeno.
 
 La foto se redimensiona a 1600px y se recomprime en el teléfono antes de

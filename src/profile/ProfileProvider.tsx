@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { api, type Profile } from '../lib/api'
+import { api, type AppConfig, type Profile } from '../lib/api'
 import { useSession } from '../lib/auth-client'
+import { setImageTransformBase } from '../lib/photo'
 import { ProfileContext } from './profile-context'
 
 /**
@@ -17,6 +18,13 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [loadingProfile, setLoadingProfile] = useState(false)
 
   const userId = session?.user?.id ?? null
+
+  useEffect(() => {
+    api
+      .get<AppConfig>('/config')
+      .then((config) => setImageTransformBase(config.imageTransformBase))
+      .catch(() => setImageTransformBase(null))
+  }, [])
 
   const refresh = useCallback(async () => {
     if (!userId) {

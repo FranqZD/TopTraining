@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router'
 import { Loader2, Pencil, Send } from 'lucide-react'
 import { Avatar, Button, Card, CardLabel, DayMark, Sheet } from '../ui'
 import { api, relativeTime, type CheckInDetail } from '../../lib/api'
-import { thumbnail } from '../../lib/photo'
 import { useProfile } from '../../profile/useProfile'
 
 /**
@@ -81,7 +80,7 @@ export function CheckInSheet({
         <div className="flex flex-col gap-4">
           {detail.photoUrl && (
             <img
-              src={thumbnail(detail.photoUrl, 800)}
+              src={detail.photoUrl}
               alt={`Entrenamiento de ${detail.user.name}`}
               className="w-full aspect-square object-cover rounded-[var(--radius-lg)] border border-ink-700"
             />

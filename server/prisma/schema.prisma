@@ -190,9 +190,9 @@ model CheckIn {
   day    String
   /// Descripción libre. Opcional: el check-in se confirma con un solo toque.
   note   String?
-  /// Foto en Cloudinary. Opcional.
+  /// Foto en R2. Opcional.
   photoUrl      String?
-  /// public_id de Cloudinary, para poder borrar el archivo si se borra el check-in.
+  /// Key del objeto en R2, para poder borrar el archivo si se borra el check-in.
   photoPublicId String?
   createdAt DateTime @default(now())
 

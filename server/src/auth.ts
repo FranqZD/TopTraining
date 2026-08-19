@@ -7,36 +7,8 @@ import { generateFriendCode } from './codes.js'
 
 const APP_URL = process.env.APP_URL ?? 'http://localhost:5173'
 
-/**
- * Proveedores sociales: solo se registran los que tienen credenciales.
- * Así el dev que clona el repo puede trabajar con email + contraseña sin
- * configurar nada, y la UI no muestra botones que van a fallar
- * (el frontend lee GET /api/config para saber cuáles hay).
- */
-function socialProviders() {
-  const providers: Record<string, unknown> = {}
-
-  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-    providers.google = {
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    }
-  }
-
-  if (process.env.APPLE_CLIENT_ID && process.env.APPLE_CLIENT_SECRET) {
-    providers.apple = {
-      clientId: process.env.APPLE_CLIENT_ID,
-      clientSecret: process.env.APPLE_CLIENT_SECRET,
-      ...(process.env.APPLE_APP_BUNDLE_IDENTIFIER
-        ? { appBundleIdentifier: process.env.APPLE_APP_BUNDLE_IDENTIFIER }
-        : {}),
-    }
-  }
-
-  return providers
-}
-
-export const enabledProviders = Object.keys(socialProviders())
+/** Google / Apple están pausados. El login es solo email + contraseña. */
+export const enabledProviders: string[] = []
 
 export const auth = betterAuth({
   appName: 'Top Training',
@@ -53,8 +25,6 @@ export const auth = betterAuth({
       verify: ({ hash, password }) => argonVerify(hash, password),
     },
   },
-
-  socialProviders: socialProviders(),
 
   /**
    * Sesión larga: es una PWA de uso diario, nadie quiere loguearse cada vez.
@@ -83,7 +53,7 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async (user) => {
-          // Todo usuario nace con su código de amistad, venga de OAuth o de email.
+          // Todo usuario nace con su código de amistad.
           return { data: { ...user, friendCode: await generateFriendCode() } }
         },
       },

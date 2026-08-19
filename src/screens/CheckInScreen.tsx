@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { ArrowLeft, Camera, Image as ImageIcon, Loader2, Pencil, Trash2, X } from 'lucide-react'
 import { Button, Card, CardLabel, DayMark, Sheet, TextField } from '../components/ui'
 import { api, localDay, type AppConfig, type CheckIn } from '../lib/api'
-import { thumbnail, uploadCheckInPhoto } from '../lib/photo'
+import { uploadCheckInPhoto } from '../lib/photo'
 
 /**
  * Check-in del día. Es LA acción de la app, así que el camino corto es
@@ -183,7 +183,7 @@ export function CheckInScreen() {
                 {preview ? (
                   <div className="relative rounded-[var(--radius-lg)] overflow-hidden border border-ink-700">
                     <img
-                      src={objectUrl ?? thumbnail(preview, 800)}
+                      src={preview}
                       alt="Vista previa del entreno"
                       className="w-full aspect-square object-cover"
                     />
@@ -311,7 +311,7 @@ function SavedCheckIn({
 
       {checkIn.photoUrl && (
         <img
-          src={thumbnail(checkIn.photoUrl, 800)}
+          src={checkIn.photoUrl}
           alt="Foto de tu entrenamiento"
           className="w-full aspect-square object-cover rounded-[var(--radius-lg)] border border-ink-700"
         />

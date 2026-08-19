@@ -219,21 +219,23 @@ export interface CheckInDetail extends CheckIn {
 
 export interface AppConfig {
   providers: string[]
-  /** false si el servidor no tiene Cloudinary: la app esconde la foto. */
+  /** false si el servidor no tiene R2: la app esconde la foto. */
   photoUploads: boolean
+  /**
+   * Prefijo `/cdn-cgi/image` de la zona con Image Transformations.
+   * null en local: thumbnail() sirve el original.
+   */
+  imageTransformBase: string | null
   /** false si el servidor no tiene claves VAPID: no hay recordatorios. */
   push: boolean
   vapidPublicKey: string | null
 }
 
 export interface UploadSignature {
-  cloudName: string
-  apiKey: string
-  folder: string
-  publicId: string
-  timestamp: number
-  signature: string
   uploadUrl: string
+  publicUrl: string
+  publicId: string
+  contentType: string
 }
 
 /** Día local en formato YYYY-MM-DD (el server no adivina la zona horaria). */

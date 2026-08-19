@@ -1,16 +1,27 @@
 import { api, type UploadSignature } from './api'
 
 /**
- * Foto del check-in: la achicamos en el teléfono y la subimos directo a
- * Cloudinary con una firma que emite nuestro servidor.
+ * Foto del check-in: la achicamos en el teléfono y la subimos directo a R2
+ * con un PUT prefirmado que emite nuestro servidor.
  *
  * Comprimir antes de subir no es un lujo: una foto de cámara moderna pesa
  * 4–8 MB y con datos móviles eso es la diferencia entre un check-in de dos
  * segundos y uno que se abandona a la mitad.
+ *
+ * Las miniaturas no se suben: las recorta Cloudflare Images a partir del
+ * original (`/cdn-cgi/image/...`). En local, sin zona, se sirve el JPEG
+ * entero.
  */
 
 const MAX_SIDE = 1600
 const QUALITY = 0.82
+
+/** Lo manda GET /api/config. Vacío = no transformar (dev). */
+let transformBase: string | null = null
+
+export function setImageTransformBase(base: string | null): void {
+  transformBase = base?.replace(/\/+$/, '') || null
+}
 
 /** Redimensiona y recomprime a JPEG. Si algo falla, devuelve el original. */
 export async function compressImage(file: File): Promise<Blob> {
@@ -43,30 +54,28 @@ export interface UploadedPhoto {
   publicId: string
 }
 
-/** Sube la foto a Cloudinary. La clave secreta nunca sale del servidor. */
+/** Sube la foto a R2. La clave secreta nunca sale del servidor. */
 export async function uploadCheckInPhoto(file: File, day: string): Promise<UploadedPhoto> {
   const signature = await api.post<UploadSignature>('/uploads/checkin-signature', { day })
   const image = await compressImage(file)
 
-  const form = new FormData()
-  form.append('file', image)
-  form.append('api_key', signature.apiKey)
-  form.append('timestamp', String(signature.timestamp))
-  form.append('signature', signature.signature)
-  // Estos tres van firmados: tienen que viajar idénticos o Cloudinary rechaza.
-  form.append('folder', signature.folder)
-  form.append('public_id', signature.publicId)
-  form.append('overwrite', 'true')
-  form.append('invalidate', 'true')
-
-  const response = await fetch(signature.uploadUrl, { method: 'POST', body: form })
+  const response = await fetch(signature.uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': signature.contentType },
+    body: image,
+  })
   if (!response.ok) throw new Error('No pudimos subir la foto')
 
-  const result = (await response.json()) as { secure_url: string; public_id: string }
-  return { url: result.secure_url, publicId: result.public_id }
+  return { url: signature.publicUrl, publicId: signature.publicId }
 }
 
-/** Miniatura servida por Cloudinary, recortada y optimizada en el CDN. */
+/**
+ * Miniatura via Cloudflare Images. El detalle (size grande) puede pedir
+ * el original sin transformar: no gasta de los 5.000 únicos/mes.
+ */
 export function thumbnail(url: string, size = 400): string {
-  return url.replace('/image/upload/', `/image/upload/c_fill,w_${size},h_${size},q_auto,f_auto/`)
+  if (!transformBase) return url
+  if (url.startsWith('blob:') || url.startsWith('data:')) return url
+  if (url.includes('/cdn-cgi/image/')) return url
+  return `${transformBase}/width=${size},height=${size},fit=cover,quality=82,format=auto/${url}`
 }

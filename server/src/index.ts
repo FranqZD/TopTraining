@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { auth, enabledProviders } from './auth.js'
 import { prisma } from './db.js'
 import { generateGroupCode } from './codes.js'
-import { createUploadSignature, deletePhoto, isOwnCloudinaryUrl, storageConfigured } from './storage.js'
+import { createUploadSignature, deletePhoto, imageTransformBase, isOwnPhotoUrl, storageConfigured } from './storage.js'
 import { computeStreaks, shiftDay, summarizeWeeks, weekStart } from './streaks.js'
 import { pushConfigured, sendToUser, vapidPublicKey } from './push.js'
 import { runNudgeSweep, startScheduler } from './scheduler.js'
@@ -76,6 +76,7 @@ app.get('/api/config', (_req, res) => {
   res.json({
     providers: enabledProviders,
     photoUploads: storageConfigured,
+    imageTransformBase,
     push: pushConfigured,
     vapidPublicKey,
   })
@@ -784,11 +785,11 @@ const checkInSchema = z.object({
 })
 
 /**
- * Firma para que el navegador suba la foto directo a Cloudinary.
+ * Firma para que el navegador suba la foto directo a R2.
  * Se pide solo si el usuario eligió una foto: un check-in sin foto no toca
  * este endpoint y por lo tanto no paga ninguna latencia extra.
  */
-app.post('/api/uploads/checkin-signature', requireAuth, (req, res) => {
+app.post('/api/uploads/checkin-signature', requireAuth, async (req, res) => {
   if (!storageConfigured) {
     res.status(503).json({ error: 'Las fotos no están configuradas en este servidor' })
     return
@@ -798,7 +799,7 @@ app.post('/api/uploads/checkin-signature', requireAuth, (req, res) => {
     res.status(400).json({ error: 'Día inválido' })
     return
   }
-  res.json(createUploadSignature(req.userId!, parsed.data.day))
+  res.json(await createUploadSignature(req.userId!, parsed.data.day))
 })
 
 app.post('/api/checkins', requireAuth, async (req, res) => {
@@ -809,9 +810,9 @@ app.post('/api/checkins', requireAuth, async (req, res) => {
   }
   const { day, note, photoUrl, photoPublicId } = parsed.data
 
-  // La URL viene del cliente, así que confirmamos que sea de nuestra cuenta y
-  // carpeta de Cloudinary antes de guardarla.
-  if (photoUrl && !isOwnCloudinaryUrl(photoUrl)) {
+  // La URL viene del cliente, así que confirmamos que sea de nuestro bucket
+  // de R2 antes de guardarla.
+  if (photoUrl && !isOwnPhotoUrl(photoUrl)) {
     res.status(400).json({ error: 'Esa foto no es válida' })
     return
   }
@@ -937,13 +938,13 @@ app.patch('/api/checkins/:id', requireAuth, async (req, res) => {
 
   const { note, photoUrl, photoPublicId, removePhoto } = parsed.data
 
-  if (photoUrl && !isOwnCloudinaryUrl(photoUrl)) {
+  if (photoUrl && !isOwnPhotoUrl(photoUrl)) {
     res.status(400).json({ error: 'Esa foto no es válida' })
     return
   }
 
-  // Si la foto se reemplaza o se quita, la vieja se va de Cloudinary. La
-  // excepción es cuando el public_id es el mismo: ahí ya la sobreescribimos.
+  // Si la foto se reemplaza o se quita, la vieja se va de R2. La excepción
+  // es cuando el public_id es el mismo: ahí ya la sobreescribimos.
   const replacingPhoto = Boolean(removePhoto || (photoPublicId && photoPublicId !== checkIn.photoPublicId))
   if (replacingPhoto && checkIn.photoPublicId) await deletePhoto(checkIn.photoPublicId)
 
@@ -963,7 +964,7 @@ app.patch('/api/checkins/:id', requireAuth, async (req, res) => {
  * si alguien marcó por error, tiene que poder arrepentirse.
  *
  * Los comentarios se van con él por la cascada del schema, y la foto se borra
- * de Cloudinary para no dejar archivos huérfanos.
+ * de R2 para no dejar archivos huérfanos.
  */
 app.delete('/api/checkins/:id', requireAuth, async (req, res) => {
   const checkIn = await prisma.checkIn.findUnique({ where: { id: String(req.params.id) } })
@@ -1010,6 +1011,6 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
 app.listen(PORT, () => {
   console.log(`[api] Top Training escuchando en http://localhost:${PORT}`)
   console.log(`[api] proveedores sociales activos: ${enabledProviders.join(', ') || 'ninguno (solo email)'}`)
-  console.log(`[api] fotos: ${storageConfigured ? 'Cloudinary' : 'sin configurar'}`)
+  console.log(`[api] fotos: ${storageConfigured ? 'R2' : 'sin configurar'}`)
   startScheduler()
 })

@@ -1,52 +1,26 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { motion } from 'motion/react'
 import { AtSign, KeyRound, Loader2 } from 'lucide-react'
 import { Button, SegmentedControl, TextField } from '../components/ui'
-import { AppleMark, GoogleMark } from '../components/brand/ProviderMarks'
-import { api } from '../lib/api'
 import { signIn, signUp } from '../lib/auth-client'
 
 type Mode = 'signin' | 'signup'
 
 /**
- * Puerta de entrada. Lo primero y más grande son los dos botones sociales
- * (cero teclado); el email queda plegado abajo para quien lo prefiera.
+ * Puerta de entrada. Por ahora solo email y contraseña; Google y Apple
+ * vuelven cuando estén las credenciales de producción.
  */
 export function LoginScreen() {
   const [mode, setMode] = useState<Mode>('signin')
-  const [providers, setProviders] = useState<string[] | null>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState<string | null>(null)
-
-  useEffect(() => {
-    api
-      .get<{ providers: string[] }>('/config')
-      .then((config) => setProviders(config.providers))
-      .catch(() => setProviders([]))
-  }, [])
-
-  const social = async (provider: 'google' | 'apple') => {
-    if (providers && !providers.includes(provider)) {
-      setError(
-        `Falta configurar ${provider === 'google' ? 'GOOGLE' : 'APPLE'}_CLIENT_ID en el servidor (ver server/.env.example).`,
-      )
-      return
-    }
-    setError(null)
-    setBusy(provider)
-    const { error: socialError } = await signIn.social({ provider, callbackURL: '/' })
-    if (socialError) {
-      setError(socialError.message ?? 'No pudimos abrir el proveedor')
-      setBusy(null)
-    }
-  }
+  const [busy, setBusy] = useState(false)
 
   const submitEmail = async (event: React.FormEvent) => {
     event.preventDefault()
     setError(null)
-    setBusy('email')
+    setBusy(true)
 
     const result =
       mode === 'signin'
@@ -61,12 +35,10 @@ export function LoginScreen() {
 
     if (result.error) {
       setError(translateAuthError(result.error.code, result.error.message))
-      setBusy(null)
+      setBusy(false)
     }
     // Si sale bien, el guard de App redirige solo al ver la sesión nueva.
   }
-
-  const disabled = busy !== null
 
   return (
     <div className="min-h-dvh bg-canvas flex flex-col">
@@ -87,38 +59,6 @@ export function LoginScreen() {
             Metas, rachas y tus amigos viendo. <span className="text-ink-100 font-bold">Sin pretextos.</span>
           </p>
         </motion.header>
-
-        <div className="flex flex-col gap-3">
-          <Button
-            size="lg"
-            variant="secondary"
-            fullWidth
-            onClick={() => social('google')}
-            disabled={disabled}
-            icon={busy === 'google' ? <Spinner /> : <GoogleMark />}
-          >
-            Continuar con Google
-            {providers && !providers.includes('google') && <NotConfigured />}
-          </Button>
-
-          <Button
-            size="lg"
-            variant="secondary"
-            fullWidth
-            onClick={() => social('apple')}
-            disabled={disabled}
-            icon={busy === 'apple' ? <Spinner /> : <AppleMark />}
-          >
-            Continuar con Apple
-            {providers && !providers.includes('apple') && <NotConfigured />}
-          </Button>
-        </div>
-
-        <div className="flex items-center gap-3 my-7">
-          <span className="h-px flex-1 bg-line-soft" />
-          <span className="tape text-ink-500">o con tu correo</span>
-          <span className="h-px flex-1 bg-line-soft" />
-        </div>
 
         <SegmentedControl
           label="Modo de acceso"
@@ -167,7 +107,7 @@ export function LoginScreen() {
             </motion.p>
           )}
 
-          <Button type="submit" size="lg" fullWidth disabled={disabled} icon={busy === 'email' ? <Spinner /> : undefined}>
+          <Button type="submit" size="lg" fullWidth disabled={busy} icon={busy ? <Spinner /> : undefined}>
             {mode === 'signin' ? 'Entrar' : 'Crear mi cuenta'}
           </Button>
         </form>
@@ -182,10 +122,6 @@ export function LoginScreen() {
 
 function Spinner() {
   return <Loader2 size={20} strokeWidth={2.5} className="animate-spin" />
-}
-
-function NotConfigured() {
-  return <span className="tape text-ink-500 ml-2">sin configurar</span>
 }
 
 function translateAuthError(code: string | undefined, fallback?: string): string {
