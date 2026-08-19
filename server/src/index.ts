@@ -3,7 +3,7 @@ import express from 'express'
 import cors from 'cors'
 import { toNodeHandler, fromNodeHeaders } from 'better-auth/node'
 import { z } from 'zod'
-import { auth, enabledProviders } from './auth.js'
+import { auth, enabledProviders, isTrustedOrigin } from './auth.js'
 import { prisma } from './db.js'
 import { generateGroupCode } from './codes.js'
 import { createUploadSignature, deletePhoto, imageTransformBase, isOwnPhotoUrl, storageConfigured } from './storage.js'
@@ -14,13 +14,19 @@ import { generateClosedRecaps, getRecap } from './recap.js'
 import type { Request, Response, NextFunction } from 'express'
 
 const PORT = Number(process.env.PORT ?? 8787)
-const APP_URL = process.env.APP_URL ?? 'http://localhost:5173'
 
 const app = express()
 
-// En dev el frontend entra por el proxy de Vite (same-origin), pero dejamos
-// CORS con credenciales listo para cuando el frontend se sirva desde otro host.
-app.use(cors({ origin: APP_URL, credentials: true }))
+// En prod el browser pega a Pages; el Worker reenvía a Render con Origin de Pages.
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || isTrustedOrigin(origin)) callback(null, true)
+      else callback(null, false)
+    },
+    credentials: true,
+  }),
+)
 
 // IMPORTANTE: el handler de better-auth va ANTES de express.json(),
 // si no el cliente se queda colgado en "pending".

@@ -5,14 +5,47 @@ import { hash as argonHash, verify as argonVerify } from '@node-rs/argon2'
 import { prisma } from './db.js'
 import { generateFriendCode } from './codes.js'
 
-const APP_URL = process.env.APP_URL ?? 'http://localhost:5173'
+function stripSlash(url: string): string {
+  return url.replace(/\/+$/, '')
+}
+
+function originsFromEnv(): string[] {
+  const listed = [
+    process.env.APP_URL,
+    process.env.BETTER_AUTH_URL,
+    process.env.TRUSTED_ORIGINS,
+    'http://localhost:5173',
+    'https://toptraining.franqdz.dev',
+    'https://*.pages.dev',
+    'https://*.workers.dev',
+  ]
+    .flatMap((value) => (value ? value.split(',') : []))
+    .map((value) => stripSlash(value.trim()))
+    .filter(Boolean)
+
+  return [...new Set(listed)]
+}
+
+export const trustedOrigins = originsFromEnv()
+export const APP_URL = stripSlash(process.env.APP_URL ?? 'http://localhost:5173')
+
+const AUTH_URL = stripSlash(process.env.BETTER_AUTH_URL ?? APP_URL)
+
+export function isTrustedOrigin(origin: string): boolean {
+  const normalized = stripSlash(origin)
+  return trustedOrigins.some((allowed) => {
+    if (!allowed.includes('*')) return allowed === normalized
+    const pattern = allowed.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\\\*/g, '[^.]+')
+    return new RegExp(`^${pattern}$`).test(normalized)
+  })
+}
 
 /** Google / Apple están pausados. El login es solo email + contraseña. */
 export const enabledProviders: string[] = []
 
 export const auth = betterAuth({
   appName: 'Top Training',
-  baseURL: process.env.BETTER_AUTH_URL ?? 'http://localhost:8787',
+  baseURL: AUTH_URL,
   secret: process.env.BETTER_AUTH_SECRET,
   database: prismaAdapter(prisma, { provider: 'sqlite' }),
 
@@ -60,10 +93,13 @@ export const auth = betterAuth({
     },
   },
 
-  trustedOrigins: [APP_URL],
+  trustedOrigins,
   advanced: {
-    // En dev el frontend entra por el proxy de Vite, así que es same-origin.
-    defaultCookieAttributes: { sameSite: 'lax' },
+    // En prod el Worker proxea /api: el origen del browser es Pages, no onrender.com.
+    defaultCookieAttributes: {
+      sameSite: 'lax',
+      secure: AUTH_URL.startsWith('https://'),
+    },
   },
 })
 
