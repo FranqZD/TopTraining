@@ -1,8 +1,9 @@
-import { api, type UploadSignature } from './api'
+import { ApiError } from './api'
 
 /**
- * Foto del check-in: la achicamos en el teléfono y la subimos directo a R2
- * con un PUT prefirmado que emite nuestro servidor.
+ * Foto del check-in: la achicamos en el teléfono y la mandamos a nuestro API,
+ * que la guarda en R2. El browser no habla con el bucket (Safari, sin CORS,
+ * reporta ese PUT como "Load failed").
  *
  * Comprimir antes de subir no es un lujo: una foto de cámara moderna pesa
  * 4–8 MB y con datos móviles eso es la diferencia entre un check-in de dos
@@ -23,7 +24,7 @@ export function setImageTransformBase(base: string | null): void {
   transformBase = base?.replace(/\/+$/, '') || null
 }
 
-/** Redimensiona y recomprime a JPEG. Si algo falla, devuelve el original. */
+/** Redimensiona y recomprime a JPEG. */
 export async function compressImage(file: File): Promise<Blob> {
   try {
     const bitmap = await createImageBitmap(file)
@@ -35,18 +36,19 @@ export async function compressImage(file: File): Promise<Blob> {
     canvas.width = width
     canvas.height = height
     const context = canvas.getContext('2d')
-    if (!context) return file
+    if (!context) throw new Error('canvas')
     context.drawImage(bitmap, 0, 0, width, height)
     bitmap.close()
 
     const blob = await new Promise<Blob | null>((resolve) =>
       canvas.toBlob(resolve, 'image/jpeg', QUALITY),
     )
-    // Si comprimir no ayudó, nos quedamos con el original.
-    return blob && blob.size < file.size ? blob : file
+    if (blob) return blob
   } catch {
-    return file
+    /* caemos al original solo si ya es JPEG */
   }
+  if (file.type === 'image/jpeg') return file
+  throw new Error('No pudimos leer esa foto')
 }
 
 export interface UploadedPhoto {
@@ -54,19 +56,24 @@ export interface UploadedPhoto {
   publicId: string
 }
 
-/** Sube la foto a R2. La clave secreta nunca sale del servidor. */
+/** Sube la foto vía el API. La clave de R2 nunca sale del servidor. */
 export async function uploadCheckInPhoto(file: File, day: string): Promise<UploadedPhoto> {
-  const signature = await api.post<UploadSignature>('/uploads/checkin-signature', { day })
   const image = await compressImage(file)
-
-  const response = await fetch(signature.uploadUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': signature.contentType },
+  const response = await fetch('/api/uploads/checkin', {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'image/jpeg',
+      'X-Checkin-Day': day,
+    },
     body: image,
   })
-  if (!response.ok) throw new Error('No pudimos subir la foto')
-
-  return { url: signature.publicUrl, publicId: signature.publicId }
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { error?: string } | null
+    throw new ApiError(body?.error ?? 'No pudimos subir la foto', response.status)
+  }
+  const stored = (await response.json()) as { publicUrl: string; publicId: string }
+  return { url: stored.publicUrl, publicId: stored.publicId }
 }
 
 /**

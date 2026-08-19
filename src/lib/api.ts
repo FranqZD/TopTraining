@@ -231,13 +231,6 @@ export interface AppConfig {
   vapidPublicKey: string | null
 }
 
-export interface UploadSignature {
-  uploadUrl: string
-  publicUrl: string
-  publicId: string
-  contentType: string
-}
-
 /** Día local en formato YYYY-MM-DD (el server no adivina la zona horaria). */
 export function localDay(date = new Date()): string {
   const offset = date.getTimezoneOffset() * 60_000

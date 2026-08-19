@@ -1,14 +1,13 @@
 import 'dotenv/config'
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 /**
  * Fotos de check-in en R2. Las miniaturas las recorta Cloudflare Images
  * (transformaciones sobre el original), no se guardan aparte.
  *
- * El navegador sube DIRECTO a R2 con un PUT prefirmado que emite este
- * servidor. Los bytes no pasan por nuestro API y la clave secreta nunca
- * sale de acá.
+ * El teléfono manda el JPEG a nuestro API y este servidor lo pone en R2.
+ * Así no hace falta CORS en el bucket (Safari reporta ese fallo como
+ * "Load failed") y la clave secreta nunca sale de acá.
  */
 
 const ACCOUNT_ID = process.env.R2_ACCOUNT_ID
@@ -45,44 +44,40 @@ function r2(): S3Client {
   return client
 }
 
-export interface UploadSignature {
-  /** PUT prefirmado. El cliente manda el JPEG acá, no a nuestro API. */
-  uploadUrl: string
+export interface StoredPhoto {
   /** Lo que se guarda en CheckIn.photoUrl. */
   publicUrl: string
   /** Key del objeto. Va en CheckIn.photoPublicId para poder borrar. */
   publicId: string
-  /** Tiene que ir en el PUT: está firmado. */
-  contentType: string
 }
 
 /**
- * Firma una subida para un usuario concreto.
+ * Sube el JPEG de un check-in.
  *
- * El key lo fijamos nosotros (`checkins/<userId>_<día>.jpg`) y va dentro de
- * la URL firmada: el cliente no puede subir a un nombre arbitrario ni pisar
- * la foto de otro. Como el nombre es determinístico, rehacer la foto del
- * mismo día sobreescribe en vez de dejar archivos huérfanos.
+ * El key lo fijamos nosotros (`checkins/<userId>_<día>.jpg`): el cliente no
+ * puede pisar la foto de otro. Como el nombre es determinístico, rehacer la
+ * foto del mismo día sobreescribe en vez de dejar archivos huérfanos.
  */
-export async function createUploadSignature(userId: string, day: string): Promise<UploadSignature> {
+export async function putCheckInPhoto(
+  userId: string,
+  day: string,
+  body: Buffer,
+): Promise<StoredPhoto> {
   if (!storageConfigured) throw new Error('R2 no está configurado')
 
   const publicId = `${PREFIX}/${userId}_${day}.jpg`
-  const uploadUrl = await getSignedUrl(
-    r2(),
+  await r2().send(
     new PutObjectCommand({
       Bucket: BUCKET,
       Key: publicId,
       ContentType: CONTENT_TYPE,
+      Body: body,
     }),
-    { expiresIn: 120 },
   )
 
   return {
-    uploadUrl,
     publicUrl: `${PUBLIC_BASE}/${publicId}`,
     publicId,
-    contentType: CONTENT_TYPE,
   }
 }
 

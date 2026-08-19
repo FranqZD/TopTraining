@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { auth, enabledProviders, isTrustedOrigin } from './auth.js'
 import { prisma } from './db.js'
 import { generateGroupCode } from './codes.js'
-import { createUploadSignature, deletePhoto, imageTransformBase, isOwnPhotoUrl, storageConfigured } from './storage.js'
+import { deletePhoto, imageTransformBase, isOwnPhotoUrl, putCheckInPhoto, storageConfigured } from './storage.js'
 import { computeStreaks, shiftDay, summarizeWeeks, weekStart } from './streaks.js'
 import { pushConfigured, sendToUser, vapidPublicKey } from './push.js'
 import { runNudgeSweep, startScheduler } from './scheduler.js'
@@ -791,22 +791,42 @@ const checkInSchema = z.object({
 })
 
 /**
- * Firma para que el navegador suba la foto directo a R2.
- * Se pide solo si el usuario eligió una foto: un check-in sin foto no toca
- * este endpoint y por lo tanto no paga ninguna latencia extra.
+ * El JPEG llega acá (mismo origen que el login) y este servidor lo pone en R2.
+ * Un check-in sin foto no toca este endpoint.
  */
-app.post('/api/uploads/checkin-signature', requireAuth, async (req, res) => {
-  if (!storageConfigured) {
-    res.status(503).json({ error: 'Las fotos no están configuradas en este servidor' })
-    return
-  }
-  const parsed = z.object({ day: DAY }).safeParse(req.body)
-  if (!parsed.success) {
-    res.status(400).json({ error: 'Día inválido' })
-    return
-  }
-  res.json(await createUploadSignature(req.userId!, parsed.data.day))
-})
+app.post(
+  '/api/uploads/checkin',
+  requireAuth,
+  express.raw({
+    type: (req) => {
+      const contentType = req.headers['content-type'] ?? ''
+      return contentType.startsWith('image/jpeg') || contentType.startsWith('application/octet-stream')
+    },
+    limit: '6mb',
+  }),
+  async (req, res) => {
+    if (!storageConfigured) {
+      res.status(503).json({ error: 'Las fotos no están configuradas en este servidor' })
+      return
+    }
+    const parsed = z.object({ day: DAY }).safeParse({ day: req.header('x-checkin-day') })
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Día inválido' })
+      return
+    }
+    const body = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0)
+    if (body.length < 100) {
+      res.status(400).json({ error: 'La foto llegó vacía' })
+      return
+    }
+    try {
+      res.json(await putCheckInPhoto(req.userId!, parsed.data.day, body))
+    } catch (error) {
+      console.error('[storage] no se pudo subir la foto:', error)
+      res.status(502).json({ error: 'No pudimos guardar la foto' })
+    }
+  },
+)
 
 app.post('/api/checkins', requireAuth, async (req, res) => {
   const parsed = checkInSchema.safeParse(req.body)
