@@ -1,4 +1,0 @@
-# El browser sigue en franqdz.dev; Pages trae el API desde Render.
-# El 200 es proxy (no redirect). /api tiene que ir ANTES del fallback de la SPA.
-/api/*  https://toptraining.onrender.com/api/:splat  200
-/*      /index.html  200
