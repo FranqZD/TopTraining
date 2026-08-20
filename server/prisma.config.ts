@@ -5,7 +5,9 @@ export default defineConfig({
   schema: 'prisma/schema.prisma',
   migrations: { path: 'prisma/migrations' },
   datasource: {
-    // Fallback para `prisma generate` en CI (Render no tiene .env).
-    url: process.env.DATABASE_URL ?? 'file:./dev.db',
+    // CLI local (`prisma db push`). En runtime Turso usa DATABASE_URL + token vía el adapter.
+    url: process.env.DATABASE_URL?.startsWith('file:')
+      ? process.env.DATABASE_URL
+      : 'file:./dev.db',
   },
 })

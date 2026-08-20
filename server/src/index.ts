@@ -11,6 +11,7 @@ import { computeStreaks, shiftDay, summarizeWeeks, weekStart } from './streaks.j
 import { pushConfigured, sendToUser, vapidPublicKey } from './push.js'
 import { runNudgeSweep, startScheduler } from './scheduler.js'
 import { generateClosedRecaps, getRecap } from './recap.js'
+import { ensureSchema } from './ensure-schema.js'
 import type { Request, Response, NextFunction } from 'express'
 
 const PORT = Number(process.env.PORT ?? 8787)
@@ -1034,9 +1035,16 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ error: 'Error interno' })
 })
 
-app.listen(PORT, () => {
-  console.log(`[api] Top Training escuchando en http://localhost:${PORT}`)
-  console.log(`[api] proveedores sociales activos: ${enabledProviders.join(', ') || 'ninguno (solo email)'}`)
-  console.log(`[api] fotos: ${storageConfigured ? 'R2' : 'sin configurar'}`)
-  startScheduler()
-})
+ensureSchema()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`[api] Top Training escuchando en http://localhost:${PORT}`)
+      console.log(`[api] proveedores sociales activos: ${enabledProviders.join(', ') || 'ninguno (solo email)'}`)
+      console.log(`[api] fotos: ${storageConfigured ? 'R2' : 'sin configurar'}`)
+      startScheduler()
+    })
+  })
+  .catch((error) => {
+    console.error('[db] no se pudo preparar la base:', error)
+    process.exit(1)
+  })
