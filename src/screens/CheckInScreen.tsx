@@ -147,7 +147,7 @@ export function CheckInScreen() {
 
   return (
     <div className="min-h-dvh bg-canvas flex flex-col">
-      <div className="mx-auto w-full max-w-[440px] px-5 py-6 flex flex-col flex-1 gap-6">
+      <div className="app-frame max-w-[440px] flex flex-col flex-1 gap-6">
         <header className="flex items-center gap-2 -ml-2">
           <button
             type="button"
@@ -247,7 +247,7 @@ export function CheckInScreen() {
             )}
 
             {/* --- Confirmar: siempre alcanzable, siempre habilitado --- */}
-            <div className="mt-auto pt-4 pb-6 sticky bottom-0 bg-linear-to-t from-canvas via-canvas to-transparent">
+            <div className="mt-auto pt-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sticky bottom-0 bg-linear-to-t from-canvas via-canvas to-transparent">
               <Button
                 size="lg"
                 fullWidth

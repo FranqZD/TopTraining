@@ -5,7 +5,7 @@ import { StepShell } from './StepShell'
 import { FREQUENCY_REACTIONS, TONE_SURFACE, TONE_TEXT } from './frequency-reactions'
 
 /**
- * Paso 4 — frecuencia semanal, con la reacción que escala de tono.
+ * Paso 3 — frecuencia semanal, con la reacción que escala de tono.
  *
  * Tocar un número solo muestra la reacción: para avanzar hay que confirmar.
  * Así se pueden probar varios y leer qué dice la app de cada uno antes de

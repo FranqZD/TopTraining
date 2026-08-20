@@ -37,7 +37,7 @@ export function HomeScreen() {
 
   return (
     <div className="min-h-dvh bg-canvas">
-      <div className="mx-auto w-full max-w-[440px] px-5 py-6 flex flex-col gap-7">
+            <div className="app-frame max-w-[440px] flex flex-col gap-7">
         <header className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <Avatar name={profile.name} image={profile.image} />

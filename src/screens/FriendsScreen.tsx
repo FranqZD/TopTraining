@@ -48,7 +48,7 @@ export function FriendsScreen() {
 
   return (
     <div className="min-h-dvh bg-canvas">
-      <div className="mx-auto w-full max-w-[440px] px-5 py-6 flex flex-col gap-8">
+      <div className="app-frame max-w-[440px] flex flex-col gap-8">
         <header className="flex items-center gap-2 -ml-2">
           <button
             type="button"

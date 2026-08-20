@@ -39,7 +39,7 @@ export function isTrustedOrigin(origin: string): boolean {
   })
 }
 
-/** Google / Apple están pausados. El login es solo email + contraseña. */
+/** Google / Apple están pausados. El login es usuario + contraseña. */
 export const enabledProviders: string[] = []
 
 export const auth = betterAuth({

@@ -76,7 +76,7 @@ export function Sheet({
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-5 pb-6">{children}</div>
+            <div className="flex-1 overflow-y-auto px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">{children}</div>
           </motion.div>
         </div>
       )}

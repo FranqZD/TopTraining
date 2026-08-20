@@ -40,7 +40,7 @@ export function DesignSystemScreen() {
 
   return (
     <div className="min-h-dvh bg-canvas">
-      <div className="mx-auto w-full max-w-[480px] px-5 py-10 flex flex-col gap-12">
+      <div className="app-frame max-w-[480px] flex flex-col gap-12">
         {/* ---------------- Encabezado de marca ---------------- */}
         <header className="flex flex-col gap-3">
           <span className="tape text-text-faint">Sistema de diseño · v1</span>

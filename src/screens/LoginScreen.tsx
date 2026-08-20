@@ -1,26 +1,40 @@
 import { useState } from 'react'
 import { motion } from 'motion/react'
-import { AtSign, KeyRound, Loader2 } from 'lucide-react'
+import { KeyRound, Loader2, User } from 'lucide-react'
 import { Button, SegmentedControl, TextField } from '../components/ui'
 import { signIn, signUp } from '../lib/auth-client'
+import { isUsername, toAuthEmail } from '../lib/username'
 
 type Mode = 'signin' | 'signup'
 
 /**
- * Puerta de entrada. Por ahora solo email y contraseña; Google y Apple
- * vuelven cuando estén las credenciales de producción.
+ * Puerta de entrada. Usuario y contraseña, nada más.
+ * Google y Apple vuelven cuando estén las credenciales de producción.
  */
 export function LoginScreen() {
   const [mode, setMode] = useState<Mode>('signin')
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  const submitEmail = async (event: React.FormEvent) => {
+  const submit = async (event: React.FormEvent) => {
     event.preventDefault()
     setError(null)
+
+    const trimmed = username.trim()
+    if (mode === 'signup' && trimmed.includes('@')) {
+      setError('Usa un usuario, no un correo.')
+      return
+    }
+    if (!trimmed.includes('@') && !isUsername(trimmed)) {
+      setError('El usuario va de 3 a 20 caracteres: letras, números, punto o guion bajo.')
+      return
+    }
+
     setBusy(true)
+    const email = toAuthEmail(trimmed)
+    const name = trimmed.includes('@') ? (trimmed.split('@')[0] ?? 'Atleta') : trimmed
 
     const result =
       mode === 'signin'
@@ -28,9 +42,7 @@ export function LoginScreen() {
         : await signUp.email({
             email,
             password,
-            // El nombre público se elige en el paso 1 del onboarding; acá solo
-            // dejamos algo razonable para no pedir un campo más de entrada.
-            name: email.split('@')[0] ?? 'Atleta',
+            name,
           })
 
     if (result.error) {
@@ -42,12 +54,12 @@ export function LoginScreen() {
 
   return (
     <div className="min-h-dvh bg-canvas flex flex-col">
-      <div className="mx-auto w-full max-w-[440px] px-5 py-10 flex flex-col flex-1">
+      <div className="app-frame max-w-[440px] flex flex-col flex-1">
         <motion.header
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          className="flex flex-col gap-3 pt-8 pb-10"
+          className="flex flex-col gap-3 pb-10"
         >
           <span className="tape text-accent">Entrenar solo es más fácil de abandonar</span>
           <h1 className="text-display [font-variation-settings:'wdth'_120] uppercase leading-[0.92]">
@@ -73,16 +85,20 @@ export function LoginScreen() {
           ]}
         />
 
-        <form onSubmit={submitEmail} className="flex flex-col gap-3 mt-4">
+        <form onSubmit={submit} className="flex flex-col gap-3 mt-4">
           <TextField
-            name="email"
-            type="email"
-            autoComplete="email"
+            name="username"
+            type="text"
+            autoComplete="username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             required
-            placeholder="tu@email.com"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            icon={<AtSign size={18} strokeWidth={2.5} />}
+            placeholder="Usuario"
+            value={username}
+            onChange={(event) => setUsername(event.target.value.replace(/\s/g, ''))}
+            icon={<User size={18} strokeWidth={2.5} />}
+            hint={mode === 'signup' ? '3 a 20 caracteres. Sin espacios.' : undefined}
           />
           <TextField
             name="password"
@@ -127,14 +143,14 @@ function Spinner() {
 function translateAuthError(code: string | undefined, fallback?: string): string {
   switch (code) {
     case 'INVALID_EMAIL_OR_PASSWORD':
-      return 'Correo o contraseña incorrectos.'
+      return 'Usuario o contraseña incorrectos.'
     case 'USER_ALREADY_EXISTS':
     case 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL':
-      return 'Ya existe una cuenta con ese correo. Mejor inicia sesión.'
+      return 'Ya existe una cuenta con ese usuario. Mejor inicia sesión.'
     case 'PASSWORD_TOO_SHORT':
       return 'La contraseña necesita al menos 8 caracteres.'
     case 'INVALID_EMAIL':
-      return 'Ese correo no parece válido.'
+      return 'Ese usuario no es válido.'
     default:
       return fallback ?? 'No pudimos completar la acción. Inténtalo de nuevo.'
   }

@@ -12,7 +12,7 @@ interface Sent {
 }
 
 /**
- * Paso 5 — amigos + primer check-in opcional.
+ * Paso 4 — amigos + primer check-in opcional.
  * Agregar manda una solicitud: recién son amigos cuando el otro acepta, así
  * que acá mostramos el estado real y no una lista de amigos que no lo son.
  */

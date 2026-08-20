@@ -96,6 +96,16 @@
     );
   }
 
+  /* Marco de pantalla: baja el contenido del notch / isla / batería de iPhone
+     cuando la PWA corre a pantalla completa (viewport-fit=cover). */
+  .app-frame {
+    width: 100%;
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 1.75rem);
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1.5rem);
+  }
+
   /* Presión física: todo lo tocable se hunde apenas al presionar. */
   .pressable {
     transition:
