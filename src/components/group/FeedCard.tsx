@@ -17,19 +17,20 @@ export function FeedCard({
   index = 0,
   onOpen,
   onAuthor,
-  flexToday,
   onVoted,
   memberCount,
+  canVote = false,
 }: {
   item: FeedItem
   index?: number
   onOpen: () => void
   /** Si está, el nombre y el avatar abren el feed de esa persona. */
   onAuthor?: (userId: string) => void
-  flexToday?: string | null
   onVoted?: (checkInId: string, result: VoteResult) => void
   /** null / undefined: no hay grupo, la barra va llena. */
   memberCount?: number | null
+  /** Si todavía no entrenó hoy, mira pero no vota. */
+  canVote?: boolean
 }) {
   const bare = !item.photoUrl && !item.note
   const aura = item.votes?.like ?? 0
@@ -130,12 +131,12 @@ export function FeedCard({
           </div>
         )}
 
-        <VoteBar
-          checkInId={item.id}
-          votes={item.votes ?? EMPTY_VOTES}
-          flexToday={flexToday ?? null}
-          onVoted={(result) => onVoted?.(item.id, result)}
-        />
+                <VoteBar
+                  checkInId={item.id}
+                  votes={item.votes ?? EMPTY_VOTES}
+                  canVote={canVote}
+                  onVoted={(result) => onVoted?.(item.id, result)}
+                />
 
         <button
           type="button"

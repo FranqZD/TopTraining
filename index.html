@@ -45,6 +45,7 @@
           },
           { passive: false },
         )
+        document.addEventListener('dragstart', stop)
         document.addEventListener('keydown', (event) => {
           if (
             (event.ctrlKey || event.metaKey) &&

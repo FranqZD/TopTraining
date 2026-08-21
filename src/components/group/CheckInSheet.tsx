@@ -132,11 +132,9 @@ export function CheckInSheet({
           <VoteBar
             checkInId={detail.id}
             votes={detail.votes ?? EMPTY_VOTES}
-            flexToday={detail.flexToday ?? null}
+            canVote={detail.canVote}
             onVoted={(result) => {
-              setDetail((current) =>
-                current ? { ...current, votes: result.votes, flexToday: result.flexToday } : current,
-              )
+              setDetail((current) => (current ? { ...current, votes: result.votes } : current))
               onVoted?.(detail.id, result)
             }}
           />

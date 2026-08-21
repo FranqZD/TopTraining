@@ -241,18 +241,16 @@ model PushLog {
   @@map("push_log")
 }
 
-/// Voto en un check-in. Tres clases:
-///   like  — el like de siempre
-///   laura — el otro voto regular (con like, uno u otro, no los dos)
-///   flex  — el súper voto (💪). Un usuario solo puede tener uno por día:
-///           el índice parcial vote_flex_user_day lo garantiza.
+/// Voto en un check-in: `like` (aura) o `laura`. Cada uno tiene uno de cada
+/// por día — y solo si entrenó ese día. Los dos pueden ir a posts distintos,
+/// pero en un mismo post es uno u otro.
 model Vote {
   id        String   @id @default(cuid())
   checkInId String
   userId    String
-  /// like | laura | flex
+  /// like | laura
   kind      String
-  /// Día local del votante, "YYYY-MM-DD". El flex se ata a este día.
+  /// Día local del votante, "YYYY-MM-DD". Es el que raciona los votos.
   day       String
   createdAt DateTime @default(now())
 
@@ -260,8 +258,9 @@ model Vote {
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([checkInId, userId, kind])
+  /// Uno de cada tipo por día: el índice es lo que lo garantiza, no el código.
+  @@unique([userId, day, kind])
   @@index([checkInId])
-  @@index([userId, kind, day])
   @@map("vote")
 }
 

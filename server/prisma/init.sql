@@ -169,6 +169,5 @@ CREATE TABLE IF NOT EXISTS "vote" (
     CONSTRAINT "vote_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "vote_checkInId_userId_kind_key" ON "vote"("checkInId", "userId", "kind");
+CREATE UNIQUE INDEX IF NOT EXISTS "vote_userId_day_kind_key" ON "vote"("userId", "day", "kind");
 CREATE INDEX IF NOT EXISTS "vote_checkInId_idx" ON "vote"("checkInId");
-CREATE INDEX IF NOT EXISTS "vote_userId_kind_day_idx" ON "vote"("userId", "kind", "day");
-CREATE UNIQUE INDEX IF NOT EXISTS "vote_flex_user_day" ON "vote"("userId", "day") WHERE "kind" = 'flex';

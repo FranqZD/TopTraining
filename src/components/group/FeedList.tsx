@@ -31,8 +31,8 @@ export function FeedList({
   const [loading, setLoading] = useState(true)
   const [exhausted, setExhausted] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
-  const [flexToday, setFlexToday] = useState<string | null>(null)
   const [memberCount, setMemberCount] = useState<number | null>(null)
+  const [canVote, setCanVote] = useState(false)
   const sentinel = useRef<HTMLDivElement>(null)
 
   const fetchPage = useCallback(
@@ -43,10 +43,8 @@ export function FeedList({
         setItems((current) => (from ? [...current, ...page.items] : page.items))
         setCursor(page.nextCursor)
         setExhausted(page.nextCursor === null)
-        if (!from) {
-          setFlexToday(page.flexToday)
-          setMemberCount(page.memberCount)
-        }
+        setCanVote(page.canVote)
+        if (!from) setMemberCount(page.memberCount)
       } catch {
         if (!from) setItems([])
         setExhausted(true)
@@ -62,8 +60,8 @@ export function FeedList({
     setCursor(null)
     setExhausted(false)
     setOpenId(null)
-    setFlexToday(null)
     setMemberCount(null)
+    setCanVote(false)
     void fetchPage(null)
   }, [sourceKey, fetchPage])
 
@@ -80,7 +78,6 @@ export function FeedList({
 
   const onVoted = (checkInId: string, result: VoteResult) => {
     setItems((current) => applyVoteResult(current, checkInId, result))
-    setFlexToday(result.flexToday)
   }
 
   if (loading && items.length === 0) {
@@ -113,9 +110,9 @@ export function FeedList({
                 index={index}
                 onOpen={() => setOpenId(item.id)}
                 onAuthor={onAuthor}
-                flexToday={flexToday}
                 onVoted={onVoted}
                 memberCount={memberCount}
+                canVote={canVote}
               />
             ))}
           </section>

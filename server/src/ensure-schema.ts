@@ -38,9 +38,25 @@ export async function ensureSchema(): Promise<void> {
       );
       CREATE UNIQUE INDEX IF NOT EXISTS "vote_checkInId_userId_kind_key" ON "vote"("checkInId", "userId", "kind");
       CREATE INDEX IF NOT EXISTS "vote_checkInId_idx" ON "vote"("checkInId");
-      CREATE INDEX IF NOT EXISTS "vote_userId_kind_day_idx" ON "vote"("userId", "kind", "day");
-      CREATE UNIQUE INDEX IF NOT EXISTS "vote_flex_user_day" ON "vote"("userId", "day") WHERE "kind" = 'flex';
     `)
+
+    // El voto pasó a estar racionado: uno de cada tipo por día. Los votos
+    // viejos pueden violar el índice nuevo, así que hay que limpiarlos —una
+    // sola vez— antes de crearlo.
+    const rationed = await client.execute(
+      `SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'vote_userId_day_kind_key'`,
+    )
+    if (rationed.rows.length === 0) {
+      await client.executeMultiple(`
+        DROP INDEX IF EXISTS "vote_flex_user_day";
+        DROP INDEX IF EXISTS "vote_userId_kind_day_idx";
+        DELETE FROM "vote" WHERE "kind" = 'flex';
+        DELETE FROM "vote"
+          WHERE "rowid" NOT IN (SELECT MAX("rowid") FROM "vote" GROUP BY "userId", "day", "kind");
+        CREATE UNIQUE INDEX "vote_userId_day_kind_key" ON "vote"("userId", "day", "kind");
+      `)
+      console.log('[db] votos racionados: uno de cada tipo por día')
+    }
   } finally {
     client.close()
   }

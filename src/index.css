@@ -10,9 +10,15 @@
     -webkit-tap-highlight-color: transparent;
     /* pan-x/pan-y: se puede scrollear, no pellizcar ni hacer doble toque para zoom. */
     touch-action: pan-x pan-y;
+    /* Dejar el dedo apretado no arrastra la pieza ni abre el menú de iOS. */
+    -webkit-user-drag: none;
+    -webkit-touch-callout: none;
   }
 
   html {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
     background-color: var(--color-ink-1000);
     color-scheme: dark;
     -webkit-text-size-adjust: 100%;
@@ -21,7 +27,9 @@
 
   body {
     margin: 0;
-    min-height: 100dvh;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
     background-color: var(--color-canvas);
     color: var(--color-text);
     font-family: var(--font-sans);
@@ -30,7 +38,28 @@
     font-variation-settings: 'wdth' 100;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    overscroll-behavior-y: none;
+    user-select: none;
+  }
+
+  /* El scroll vive acá, no en el documento: es lo único que evita que iOS
+     despegue la app de los bordes cuando te pasás de largo. */
+  #root {
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: none;
+  }
+
+  /* Con una hoja abierta, el fondo se queda quieto. */
+  html.sheet-open #root {
+    overflow: hidden;
+  }
+
+  /* Escribir sí necesita selección. */
+  input,
+  textarea,
+  [contenteditable] {
+    user-select: text;
   }
 
   /* Los titulares de Top Training son anchos, apretados y en caja alta cuando

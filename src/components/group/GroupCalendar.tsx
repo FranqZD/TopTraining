@@ -257,15 +257,15 @@ function DaySheet({ groupId, day, onClose }: { groupId: string; day: string | nu
   const [items, setItems] = useState<FeedItem[]>([])
   const [loading, setLoading] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
-  const [flexToday, setFlexToday] = useState<string | null>(null)
   const [memberCount, setMemberCount] = useState<number | null>(null)
+  const [canVote, setCanVote] = useState(false)
 
   useEffect(() => {
     if (!day) {
       setItems([])
       setOpenId(null)
-      setFlexToday(null)
       setMemberCount(null)
+      setCanVote(false)
       return
     }
     setLoading(true)
@@ -274,8 +274,8 @@ function DaySheet({ groupId, day, onClose }: { groupId: string; day: string | nu
       .get<FeedPage>(`/groups/${groupId}/feed?${query}`)
       .then((page) => {
         setItems(page.items)
-        setFlexToday(page.flexToday)
         setMemberCount(page.memberCount)
+        setCanVote(page.canVote)
       })
       .catch(() => setItems([]))
       .finally(() => setLoading(false))
@@ -283,7 +283,6 @@ function DaySheet({ groupId, day, onClose }: { groupId: string; day: string | nu
 
   const onVoted = (checkInId: string, result: VoteResult) => {
     setItems((current) => applyVoteResult(current, checkInId, result))
-    setFlexToday(result.flexToday)
   }
 
   return (
@@ -307,9 +306,9 @@ function DaySheet({ groupId, day, onClose }: { groupId: string; day: string | nu
                   onClose()
                   navigate(`/u/${userId}`)
                 }}
-                flexToday={flexToday}
                 onVoted={onVoted}
                 memberCount={memberCount}
+                canVote={canVote}
               />
             ))}
           </div>

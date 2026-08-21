@@ -1,19 +1,21 @@
-import { Banana, BicepsFlexed, Flame } from 'lucide-react'
+import { Banana, Flame } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cn } from '../ui'
 import { api, localDay, EMPTY_VOTES, type FeedItem, type VoteKind, type VoteResult, type VoteTally } from '../../lib/api'
 
+/** El voto es de a uno por día: el post que lo tenía antes lo pierde. */
 export function applyVoteResult(items: FeedItem[], targetId: string, result: VoteResult): FeedItem[] {
   return items.map((item) => {
     if (item.id === targetId) return { ...item, votes: result.votes }
-    if (result.movedFrom && item.id === result.movedFrom) {
+    if (result.movedFrom && item.id === result.movedFrom.checkInId) {
+      const kind = result.movedFrom.kind
       const current = item.votes ?? EMPTY_VOTES
       return {
         ...item,
         votes: {
           ...current,
-          flex: Math.max(0, current.flex - 1),
-          mine: current.mine.filter((kind) => kind !== 'flex'),
+          [kind]: Math.max(0, current[kind] - 1),
+          mine: current.mine.filter((mine) => mine !== kind),
         },
       }
     }
@@ -22,62 +24,55 @@ export function applyVoteResult(items: FeedItem[], targetId: string, result: Vot
 }
 
 /**
- * Tres votos a lo ancho de la card: aura (fuego), músculo (uno por día) y
- * laura (plátano). Aura y Laura se pisan. El músculo, si ya lo usaste, se mueve.
+ * Aura (fuego) y Laura (plátano). Cada uno tiene uno de cada por día y solo
+ * si entrenó: sin `canVote` los botones no responden.
  */
 export function VoteBar({
   checkInId,
   votes,
-  flexToday,
+  canVote,
   onVoted,
 }: {
   checkInId: string
   votes: VoteTally
-  flexToday: string | null
+  canVote: boolean
   onVoted: (result: VoteResult) => void
 }) {
   const tally = votes ?? EMPTY_VOTES
   const mine = new Set(tally.mine)
-  const flexedHere = flexToday === checkInId
-  const flexedElsewhere = Boolean(flexToday && flexToday !== checkInId)
 
   const toggle = async (kind: VoteKind) => {
-    const result = await api.post<VoteResult>(`/checkins/${checkInId}/votes`, {
-      kind,
-      day: localDay(),
-    })
-    onVoted(result)
+    try {
+      const result = await api.post<VoteResult>(`/checkins/${checkInId}/votes`, {
+        kind,
+        day: localDay(),
+      })
+      onVoted(result)
+    } catch {
+      // Se vota poco y sin premio: si falla, el estado se queda como estaba.
+    }
   }
 
   return (
-    <div className="grid grid-cols-3 gap-px overflow-hidden rounded-[var(--radius-md)] bg-ink-800">
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-sm)] bg-ink-800">
       <VoteCell
-        label="Aura"
+        label={canVote ? 'Aura' : 'Entrena hoy para dar aura'}
         active={mine.has('like')}
+        canVote={canVote}
         tone="success"
         onClick={() => void toggle('like')}
       >
-        <Flame size={18} strokeWidth={2.5} fill={mine.has('like') ? 'currentColor' : 'none'} />
-        <span className="tape">Aura</span>
+        <Flame size={16} strokeWidth={2.5} fill={mine.has('like') ? 'currentColor' : 'none'} />
       </VoteCell>
 
       <VoteCell
-        label={flexedElsewhere ? 'Mover el súper voto acá' : 'Súper voto, uno por día'}
-        active={flexedHere}
-        tone="accent"
-        onClick={() => void toggle('flex')}
-      >
-        <BicepsFlexed size={18} strokeWidth={2.5} fill={flexedHere ? 'currentColor' : 'none'} />
-      </VoteCell>
-
-      <VoteCell
-        label="Laura"
+        label={canVote ? 'Laura' : 'Entrena hoy para dar laura'}
         active={mine.has('laura')}
+        canVote={canVote}
         tone="danger"
         onClick={() => void toggle('laura')}
       >
-        <Banana size={18} strokeWidth={2.5} fill={mine.has('laura') ? 'currentColor' : 'none'} />
-        <span className="tape">Laura</span>
+        <Banana size={16} strokeWidth={2.5} fill={mine.has('laura') ? 'currentColor' : 'none'} />
       </VoteCell>
     </div>
   )
@@ -86,20 +81,21 @@ export function VoteBar({
 function VoteCell({
   label,
   active,
+  canVote,
   tone,
   onClick,
   children,
 }: {
   label: string
   active: boolean
-  tone: 'success' | 'accent' | 'danger'
+  canVote: boolean
+  tone: 'success' | 'danger'
   onClick: () => void
   children: ReactNode
 }) {
   const tones = {
     success: active ? 'bg-success-tint text-success' : 'bg-ink-850 text-success/80',
-    accent: active ? 'bg-accent-tint text-accent' : 'bg-ink-850 text-text-muted',
-    danger: active ? 'bg-danger-tint text-danger' : 'bg-ink-850 text-danger',
+    danger: active ? 'bg-danger-tint text-danger' : 'bg-ink-850 text-danger/80',
   }
 
   return (
@@ -109,11 +105,13 @@ function VoteCell({
         event.stopPropagation()
         onClick()
       }}
+      disabled={!canVote}
       aria-label={label}
       aria-pressed={active}
       className={cn(
-        'pressable relative flex flex-col items-center justify-center gap-1 py-2 min-h-[var(--size-touch)] cursor-pointer',
+        'pressable grid place-items-center h-9 cursor-pointer',
         tones[tone],
+        !canVote && 'bg-ink-850 text-text-faint cursor-default',
       )}
     >
       {children}

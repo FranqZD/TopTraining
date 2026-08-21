@@ -130,22 +130,20 @@ export interface FriendWithStreaks extends Friend {
 export interface VoteTally {
   like: number
   laura: number
-  flex: number
   /** Qué votos puse yo en este post. */
   mine: VoteKind[]
 }
 
-export type VoteKind = 'like' | 'laura' | 'flex'
+/** `like` es el aura. Uno de cada por día, y solo si entrenaste. */
+export type VoteKind = 'like' | 'laura'
 
 export interface VoteResult {
   votes: VoteTally
-  /** Si el músculo se movió, el post que lo perdió. */
-  movedFrom: string | null
-  /** Post donde está hoy mi músculo, o null. */
-  flexToday: string | null
+  /** Si el voto venía de otro post, cuál lo perdió. */
+  movedFrom: { checkInId: string; kind: VoteKind } | null
 }
 
-export const EMPTY_VOTES: VoteTally = { like: 0, laura: 0, flex: 0, mine: [] }
+export const EMPTY_VOTES: VoteTally = { like: 0, laura: 0, mine: [] }
 
 export interface FeedItem {
   id: string
@@ -162,7 +160,8 @@ export interface FeedItem {
 export interface FeedPage {
   items: FeedItem[]
   nextCursor: string | null
-  flexToday: string | null
+  /** false si todavía no entrenaste hoy: sin entrenar no se vota. */
+  canVote: boolean
   /** Gente del grupo. null fuera de un grupo: la barra de aura se muestra llena. */
   memberCount: number | null
 }
@@ -247,7 +246,7 @@ export interface CheckInDetail extends CheckIn {
   user: Friend
   comments: Comment[]
   votes: VoteTally
-  flexToday: string | null
+  canVote: boolean
 }
 
 export interface AppConfig {

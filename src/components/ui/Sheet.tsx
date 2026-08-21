@@ -9,6 +9,10 @@ import { cn } from './cn'
  * contenido lejos del pulgar: esta entra desde abajo y el botón de cerrar
  * queda al alcance.
  */
+
+/** Se pueden apilar hojas (el día del calendario abre un entreno): el fondo
+ *  se libera recién cuando se cierra la última. */
+let openSheets = 0
 export function Sheet({
   open,
   onClose,
@@ -22,15 +26,17 @@ export function Sheet({
   children: ReactNode
   className?: string
 }) {
-  // Con la hoja abierta el fondo no se scrollea.
+  // Con la hoja abierta el fondo no se scrollea. La clase la lee el CSS, que
+  // es donde vive el contenedor de scroll de la app.
   useEffect(() => {
     if (!open) return
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    openSheets++
+    document.documentElement.classList.add('sheet-open')
     const onKey = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
     return () => {
-      document.body.style.overflow = previous
+      openSheets--
+      if (openSheets === 0) document.documentElement.classList.remove('sheet-open')
       window.removeEventListener('keydown', onKey)
     }
   }, [open, onClose])
