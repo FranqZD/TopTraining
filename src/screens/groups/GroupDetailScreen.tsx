@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { AnimatePresence, motion } from 'motion/react'
-import { ArrowLeft, Check, ChevronDown, ChevronRight, Copy, Crown, Trophy } from 'lucide-react'
+import { ArrowLeft, Check, ChevronDown, ChevronRight, Copy, Crown, Settings, Trophy } from 'lucide-react'
 import { Avatar, Button, Card, CardLabel, ChoiceGroup, SegmentedControl, cn } from '../../components/ui'
 import { GroupFeed } from '../../components/group/GroupFeed'
 import { GroupCalendar } from '../../components/group/GroupCalendar'
+import { GroupSettingsSheet } from '../../components/group/GroupSettingsSheet'
 import { api, type GroupDetail } from '../../lib/api'
 
 type Mode = 'feed' | 'calendar'
@@ -24,6 +25,7 @@ export function GroupDetailScreen() {
   const [notFound, setNotFound] = useState(false)
   const [mode, setMode] = useState<Mode>('feed')
   const [panelOpen, setPanelOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -87,12 +89,24 @@ export function GroupDetailScreen() {
           >
             <ArrowLeft size={22} strokeWidth={2.5} />
           </button>
-          <div className="min-w-0">
+          <div className="flex-1 min-w-0">
             <h1 className="text-headline truncate leading-tight">{group.name}</h1>
             <p className="tape text-text-faint">
               {group.memberCount} {group.memberCount === 1 ? 'miembro' : 'miembros'} · meta {group.baseGoal}×
             </p>
           </div>
+
+          {/* El engranaje solo existe para quien puede tocar algo. */}
+          {group.isOwner && (
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              aria-label="Ajustes del grupo"
+              className="pressable grid place-items-center size-11 shrink-0 rounded-[var(--radius-md)] bg-ink-850 border border-ink-700 text-ink-300 hover:text-ink-50 cursor-pointer"
+            >
+              <Settings size={20} strokeWidth={2.5} />
+            </button>
+          )}
         </header>
 
         {/* --- Panel plegable con los datos del grupo --- */}
@@ -233,6 +247,16 @@ export function GroupDetailScreen() {
           )}
         </div>
       </div>
+
+      {group.isOwner && (
+        <GroupSettingsSheet
+          group={group}
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          onChanged={load}
+          onDeleted={() => navigate('/', { replace: true })}
+        />
+      )}
     </div>
   )
 }

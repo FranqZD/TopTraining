@@ -809,6 +809,111 @@ app.patch('/api/groups/:id/me', requireAuth, async (req, res) => {
 })
 
 /* ---------------------------------------------------------------------------
+   Administrar el grupo — solo el dueño
+   ------------------------------------------------------------------------- */
+
+/**
+ * El grupo si lo administra este usuario. Cualquier otra cosa (no existe, no
+ * es miembro, es miembro pero no dueño) devuelve null y se contesta igual: no
+ * hace falta contarle a nadie qué grupos existen.
+ */
+async function ownedGroup(groupId: string, userId: string) {
+  const group = await prisma.group.findUnique({
+    where: { id: groupId },
+    include: { _count: { select: { members: true } } },
+  })
+  return group && group.ownerId === userId ? group : null
+}
+
+/** Meta del grupo: la base que hereda todo el que no se puso una propia. */
+app.patch('/api/groups/:id', requireAuth, async (req, res) => {
+  const parsed = z.object({ baseGoal: createGroupSchema.shape.baseGoal }).safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Meta inválida' })
+    return
+  }
+
+  const group = await ownedGroup(String(req.params.id), req.userId!)
+  if (!group) {
+    res.status(404).json({ error: 'Ese grupo no existe o no lo administras' })
+    return
+  }
+
+  const updated = await prisma.group.update({
+    where: { id: group.id },
+    data: { baseGoal: parsed.data.baseGoal },
+    include: { _count: { select: { members: true } } },
+  })
+  const mine = await membershipOf(group.id, req.userId!)
+  res.json(groupSummary(updated, mine!))
+})
+
+/**
+ * Sumar a alguien. Tiene que ser amigo aceptado del dueño, la misma regla que
+ * al crear el grupo: la lista que manda el cliente no decide nada.
+ */
+app.post('/api/groups/:id/members', requireAuth, async (req, res) => {
+  const parsed = z.object({ userId: z.string().min(1) }).safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Falta a quién agregar' })
+    return
+  }
+
+  const group = await ownedGroup(String(req.params.id), req.userId!)
+  if (!group) {
+    res.status(404).json({ error: 'Ese grupo no existe o no lo administras' })
+    return
+  }
+
+  const friends = await listFriends(req.userId!)
+  if (!friends.some((friend) => friend.id === parsed.data.userId)) {
+    res.status(403).json({ error: 'Solo puedes agregar a tus amigos' })
+    return
+  }
+
+  // Idempotente: agregar dos veces al mismo no duplica la membresía.
+  await prisma.groupMember.upsert({
+    where: { groupId_userId: { groupId: group.id, userId: parsed.data.userId } },
+    create: { groupId: group.id, userId: parsed.data.userId },
+    update: {},
+  })
+  res.status(201).json({ ok: true })
+})
+
+/**
+ * Sacar a alguien. Al dueño no: un grupo sin dueño no lo puede administrar
+ * nadie. Los check-ins del que sale no se tocan — son suyos, no del grupo.
+ */
+app.delete('/api/groups/:id/members/:userId', requireAuth, async (req, res) => {
+  const group = await ownedGroup(String(req.params.id), req.userId!)
+  if (!group) {
+    res.status(404).json({ error: 'Ese grupo no existe o no lo administras' })
+    return
+  }
+
+  const target = String(req.params.userId)
+  if (target === group.ownerId) {
+    res.status(400).json({ error: 'No puedes sacar al dueño del grupo' })
+    return
+  }
+
+  await prisma.groupMember.deleteMany({ where: { groupId: group.id, userId: target } })
+  res.json({ ok: true })
+})
+
+/** Borrar el grupo. Se lleva membresías y recaps por cascada. */
+app.delete('/api/groups/:id', requireAuth, async (req, res) => {
+  const group = await ownedGroup(String(req.params.id), req.userId!)
+  if (!group) {
+    res.status(404).json({ error: 'Ese grupo no existe o no lo administras' })
+    return
+  }
+
+  await prisma.group.delete({ where: { id: group.id } })
+  res.json({ ok: true })
+})
+
+/* ---------------------------------------------------------------------------
    Feed y calendario del grupo
    ------------------------------------------------------------------------- */
 

@@ -50,6 +50,9 @@ de uso. Es una app de uso diario: nadie debería volver a ver el login.
 | `POST` | `/api/groups/join` | sumarse con el código del grupo |
 | `GET` | `/api/groups/:id` | detalle con miembros y metas efectivas |
 | `PATCH` | `/api/groups/:id/me` | tu meta personal (`null` = heredar la del grupo) |
+| `PATCH` `DELETE` | `/api/groups/:id` | cambiar la meta del grupo / borrarlo (solo el dueño) |
+| `POST` | `/api/groups/:id/members` | sumar a un amigo (solo el dueño) |
+| `DELETE` | `/api/groups/:id/members/:userId` | sacar a alguien, menos al dueño (solo el dueño) |
 | `POST` | `/api/uploads/checkin-signature` | PUT prefirmado para subir la foto a R2 |
 | `POST` | `/api/checkins` | marcar el día (409 si ya marcó) |
 | `GET` | `/api/checkins/latest` | último check-in propio o `?userId=` de un amigo |
