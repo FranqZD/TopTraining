@@ -131,12 +131,12 @@ export function FeedCard({
           </div>
         )}
 
-                <VoteBar
-                  checkInId={item.id}
-                  votes={item.votes ?? EMPTY_VOTES}
-                  canVote={canVote}
-                  onVoted={(result) => onVoted?.(item.id, result)}
-                />
+        <VoteBar
+          checkInId={item.id}
+          votes={item.votes ?? EMPTY_VOTES}
+          canVote={canVote}
+          onVoted={(result) => onVoted?.(item.id, result)}
+        />
 
         <button
           type="button"
