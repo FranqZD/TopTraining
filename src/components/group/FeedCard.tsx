@@ -9,8 +9,8 @@ import { VoteBar } from './VoteBar'
  * Una tarjeta del feed. La misma pieza se usa en el scroll del grupo y al
  * abrir un día del calendario: si se viera distinto, el calendario mentiría.
  *
- * La barra de aura se llena con los votos de aura vs. la gente del grupo.
- * Fuera de un grupo, se muestra llena: solo importa cuánta aura generó el post.
+ * La barra se llena en verde (aura) y rojo (laura) según los votos del
+ * grupo. Fuera de un grupo, se llena con la proporción de aura vs. laura.
  */
 export function FeedCard({
   item,
@@ -33,8 +33,11 @@ export function FeedCard({
 }) {
   const bare = !item.photoUrl && !item.note
   const aura = item.votes?.like ?? 0
-  const fill =
-    memberCount && memberCount > 0 ? Math.min(100, (aura / memberCount) * 100) : 100
+  const laura = item.votes?.laura ?? 0
+  const voted = aura + laura
+  const capacity = memberCount && memberCount > 0 ? memberCount : Math.max(voted, 1)
+  const auraPct = (aura / capacity) * 100
+  const lauraPct = (laura / capacity) * 100
 
   const identity = (
     <>
@@ -78,26 +81,37 @@ export function FeedCard({
             <header className="flex items-center gap-3 min-w-0 flex-1">{identity}</header>
           )}
 
-          <div className="shrink-0 text-right leading-none pt-0.5">
+          <div className="shrink-0 relative text-right leading-none pt-4">
+            <p className="num text-caption text-danger absolute top-0 right-0">{laura}</p>
             <p className="num text-headline text-success">{aura}</p>
             <p className="tape text-success mt-1">de aura</p>
           </div>
         </div>
 
         <div
-          className="h-1 rounded-full bg-ink-800 overflow-hidden"
+          className="flex h-1.5 rounded-full bg-ink-800 overflow-hidden"
           role="progressbar"
-          aria-label="Aura del grupo"
+          aria-label="Aura y Laura"
           aria-valuemin={0}
-          aria-valuemax={memberCount && memberCount > 0 ? memberCount : aura || 1}
-          aria-valuenow={aura}
+          aria-valuemax={capacity}
+          aria-valuenow={voted}
         >
-          <motion.span
-            className="block h-full w-full rounded-full bg-success origin-left"
-            initial={false}
-            animate={{ scaleX: fill / 100 }}
-            transition={{ duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
-          />
+          {auraPct > 0 && (
+            <motion.span
+              className="h-full bg-success"
+              initial={false}
+              animate={{ width: `${auraPct}%` }}
+              transition={{ duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
+            />
+          )}
+          {lauraPct > 0 && (
+            <motion.span
+              className="h-full bg-danger"
+              initial={false}
+              animate={{ width: `${lauraPct}%` }}
+              transition={{ duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
+            />
+          )}
         </div>
 
         {item.photoUrl && (
@@ -130,10 +144,10 @@ export function FeedCard({
         <button
           type="button"
           onClick={onOpen}
-          className="pressable flex items-center gap-2 self-start min-h-[var(--size-touch)] -my-1 pr-3 text-text-faint hover:text-accent-text cursor-pointer"
+          className="pressable flex items-center justify-center gap-2 w-full min-h-[var(--size-control)] rounded-[var(--radius-md)] bg-ink-850 border border-ink-800 text-text-muted hover:text-text hover:border-ink-700 cursor-pointer"
         >
-          <MessageCircle size={17} strokeWidth={2.5} />
-          <span className="text-caption font-bold">
+          <MessageCircle size={20} strokeWidth={2.5} />
+          <span className="text-body font-bold">
             {item.commentCount === 0 ? 'Comentar' : `Comentar · ${item.commentCount}`}
           </span>
         </button>

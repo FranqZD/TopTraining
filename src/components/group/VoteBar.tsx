@@ -78,9 +78,7 @@ export function VoteBar({
         onClick={() => void toggle('laura')}
       >
         <Banana size={22} strokeWidth={2.5} fill={mine.has('laura') ? 'currentColor' : 'none'} />
-        <span className="tape text-danger">
-          Laura{tally.laura > 0 ? ` ${tally.laura}` : ''}
-        </span>
+        <span className="tape">Laura</span>
       </VoteCell>
     </div>
   )
