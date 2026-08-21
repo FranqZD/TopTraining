@@ -227,6 +227,8 @@ export interface RecapMember {
   completion: number | null
   /** Apodo del mes. Los recaps viejos pueden no traerlo. */
   title?: RecapTitle | null
+  /** Entrenos de cada semana del mes. Los recaps viejos pueden no traerlo. */
+  weeklyCheckIns?: number[]
 }
 
 export type RecapTitle = 'rey' | 'enrachado' | 'huevon' | 'pollito'
@@ -241,6 +243,8 @@ export interface Recap {
   /** Semanas-persona cumplidas sobre evaluadas, 0..1. */
   completion: number | null
   totalCheckIns: number
+  /** Techo del mes: la meta de cada uno por semana terminada. Puede faltar en recaps viejos. */
+  possibleCheckIns?: number
   members: RecapMember[]
   best: RecapMember | null
   worst: RecapMember | null

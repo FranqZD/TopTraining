@@ -31,6 +31,12 @@ export interface RecapMember {
   completion: number | null
   /** Apodo del mes. null si no hay nada que decir. */
   title: RecapTitle | null
+  /**
+   * Entrenos de cada semana del mes, en orden. Cuenta la semana entera (lunes
+   * a domingo), que es la unidad con la que se mide la meta, aunque se le
+   * escapen días al mes. Las primeras `weeksEvaluated` ya terminaron.
+   */
+  weeklyCheckIns: number[]
 }
 
 export interface Recap {
@@ -44,6 +50,8 @@ export interface Recap {
   /** Cumplimiento del grupo: semanas-persona cumplidas sobre evaluadas. */
   completion: number | null
   totalCheckIns: number
+  /** Techo del mes: la meta de cada uno por cada semana ya terminada. */
+  possibleCheckIns: number
   members: RecapMember[]
   /** El que mejor la remó. null si no hay nada que destacar todavía. */
   best: RecapMember | null
@@ -97,13 +105,13 @@ export async function computeRecap(groupId: string, month: string, today: string
     const days = daysByUser.get(member.userId) ?? new Set<string>()
     const goal = member.personalGoal ?? group.baseGoal
 
+    const summaries = summarizeWeeks(days, mondays, goal, today)
     // Solo las semanas ya terminadas: la que está corriendo todavía puede
     // cumplirse y las futuras no existen.
-    const weeks = summarizeWeeks(days, mondays, goal, today).filter(
-      (week) => week.status === 'met' || week.status === 'missed',
-    )
+    const weeks = summaries.filter((week) => week.status === 'met' || week.status === 'missed')
 
     return {
+      weeklyCheckIns: summaries.map((week) => week.count),
       id: member.userId,
       name: member.user.name,
       image: member.user.image,
@@ -157,6 +165,7 @@ export async function computeRecap(groupId: string, month: string, today: string
     weeksEvaluated: mondays.filter((monday) => weekDays(monday)[6]! < today).length,
     completion: weeksEvaluated ? weeksMet / weeksEvaluated : null,
     totalCheckIns: members.reduce((total, member) => total + member.checkIns, 0),
+    possibleCheckIns: members.reduce((total, member) => total + member.goal * member.weeksEvaluated, 0),
     members: ranked,
     best,
     worst,
