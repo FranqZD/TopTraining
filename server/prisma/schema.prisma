@@ -37,6 +37,19 @@ model User {
   friendCode          String  @unique
   onboardingCompleted Boolean @default(false)
 
+  // --- Interruptores de avisos, uno por tipo (ver push.ts) ---
+  // Todos prendidos: el que no los quiera, los apaga en Ajustes.
+  /// Recordatorio de entrenar, el del job.
+  notifyNudge    Boolean @default(true)
+  /// Alguien de tus grupos marcó su entreno.
+  notifyPosts    Boolean @default(true)
+  /// Comentaron tu entreno.
+  notifyComments Boolean @default(true)
+  /// Te dieron aura o laura.
+  notifyVotes    Boolean @default(true)
+  /// Te llegó una solicitud de amistad.
+  notifyFriends  Boolean @default(true)
+
   sessions Session[]
   accounts Account[]
   checkIns CheckIn[]

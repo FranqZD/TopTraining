@@ -88,11 +88,14 @@ export const NUDGE_COPY = [
 export async function runNudgeSweep(at = new Date()): Promise<{ checked: number; sent: number }> {
   if (!pushConfigured) return { checked: 0, sent: 0 }
 
-  // Solo miramos gente que eligió horario y tiene al menos un dispositivo.
+  // Solo gente que eligió horario, quiere el recordatorio y tiene al menos un
+  // dispositivo. Filtrar acá evita reservar el envío del día para alguien que
+  // lo tiene apagado.
   const candidates = await prisma.user.findMany({
     where: {
       trainingSlot: { not: null },
       onboardingCompleted: true,
+      notifyNudge: true,
       pushSubscriptions: { some: {} },
     },
     select: { id: true, name: true, trainingSlot: true, timeZone: true },
@@ -119,7 +122,7 @@ export async function runNudgeSweep(at = new Date()): Promise<{ checked: number;
     }
 
     const copy = NUDGE_COPY[Math.floor(Math.random() * NUDGE_COPY.length)]!
-    const delivered = await sendToUser(user.id, { ...copy, url: '/checkin', tag: 'nudge' })
+    const delivered = await sendToUser(user.id, { ...copy, url: '/checkin', tag: 'nudge' }, 'nudge')
 
     if (delivered > 0) {
       sent++

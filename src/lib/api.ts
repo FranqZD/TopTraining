@@ -48,7 +48,20 @@ export interface Profile {
   timeZone: string | null
   friendCode: string
   onboardingCompleted: boolean
+  /** Recordatorio de entrenar. */
+  notifyNudge: boolean
+  /** Alguien de tus grupos marcó su entreno. */
+  notifyPosts: boolean
+  /** Comentaron tu entreno. */
+  notifyComments: boolean
+  /** Te dieron aura o laura. */
+  notifyVotes: boolean
+  /** Te llegó una solicitud de amistad. */
+  notifyFriends: boolean
 }
+
+/** Los campos de `Profile` que son interruptores de avisos. */
+export type NotifyKey = 'notifyNudge' | 'notifyPosts' | 'notifyComments' | 'notifyVotes' | 'notifyFriends'
 
 export interface Friend {
   id: string

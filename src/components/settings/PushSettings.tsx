@@ -1,17 +1,23 @@
 import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'motion/react'
-import { Bell, BellOff, Loader2, Share, SquarePlus } from 'lucide-react'
-import { Button, Card, CardLabel } from '../ui'
-import { api, type AppConfig, type TrainingSlot } from '../../lib/api'
+import { Bell, BellOff, Flame, Loader2, MessageCircle, Share, SquarePlus, UserPlus, Users } from 'lucide-react'
+import { Button, Card, CardLabel, Switch } from '../ui'
+import { api, type AppConfig, type NotifyKey, type TrainingSlot } from '../../lib/api'
 import { disablePush, enablePush, getPushState, isIOS, type PushState } from '../../lib/push'
+import { useProfile } from '../../profile/useProfile'
 
 /**
- * Activar los recordatorios de entreno.
+ * Los avisos: activarlos en este dispositivo y elegir cuáles.
  *
  * El orden importa: NUNCA pedimos permiso al abrir la app. En iOS el push solo
  * existe con la PWA instalada, así que si detectamos ese caso mostramos cómo
  * instalarla y recién ahí ofrecemos activar. El permiso se pide una sola vez
  * en la vida del sitio: hay que gastarlo cuando el usuario ya sabe qué gana.
+ *
+ * Los interruptores de abajo son del usuario, no del dispositivo: viven en el
+ * perfil, así que apagar "aura y laura" en el teléfono también lo apaga en la
+ * tablet. Solo aparecen con los avisos activados — elegir cuáles recibir
+ * cuando no se recibe ninguno no significa nada.
  */
 
 /** A qué hora llega el recordatorio según el horario elegido en el onboarding. */
@@ -119,13 +125,11 @@ export function PushSettings({ trainingSlot }: { trainingSlot: TrainingSlot | nu
             {on ? <Bell size={20} strokeWidth={2.5} /> : <BellOff size={20} strokeWidth={2.5} />}
           </span>
           <div className="flex-1 min-w-0">
-            <p className="font-bold leading-tight">{on ? 'Recordatorios activados' : 'Recordatorios apagados'}</p>
+            <p className="font-bold leading-tight">{on ? 'Avisos activados' : 'Avisos apagados'}</p>
             <p className="text-caption text-text-muted">
               {on
-                ? trainingSlot
-                  ? `Si no marcaste, te avisamos ${NUDGE_LABEL[trainingSlot]}. Una vez por día, nada más.`
-                  : 'Elige tu horario de entreno arriba para que sepamos cuándo avisarte.'
-                : 'Un aviso el día que te estés haciendo el distraído.'}
+                ? 'En este dispositivo. Elige abajo cuáles quieres recibir.'
+                : 'El recordatorio de entrenar y lo que pase en tus grupos.'}
             </p>
           </div>
         </Card>
@@ -139,7 +143,7 @@ export function PushSettings({ trainingSlot }: { trainingSlot: TrainingSlot | nu
           disabled={busy}
           icon={busy ? <Loader2 size={18} strokeWidth={2.5} className="animate-spin" /> : undefined}
         >
-          {on ? 'Desactivar' : 'Activar recordatorios'}
+          {on ? 'Desactivar' : 'Activar avisos'}
         </Button>
         {on && (
           <Button variant="ghost" onClick={sendTest} disabled={busy}>
@@ -149,7 +153,92 @@ export function PushSettings({ trainingSlot }: { trainingSlot: TrainingSlot | nu
       </div>
 
       {feedback && <p className="text-caption text-text-muted">{feedback}</p>}
+
+      {on && <NotifySwitches trainingSlot={trainingSlot} />}
     </Section>
+  )
+}
+
+/** Qué avisos quiero. Cada interruptor guarda solo, sin botón de guardar. */
+function NotifySwitches({ trainingSlot }: { trainingSlot: TrainingSlot | null }) {
+  const { profile, update } = useProfile()
+  // Mientras el servidor responde mandamos el interruptor donde el dedo lo
+  // dejó: esperar el ida y vuelta para moverlo se siente roto.
+  const [pending, setPending] = useState<Partial<Record<NotifyKey, boolean>>>({})
+
+  if (!profile) return null
+
+  const toggle = async (key: NotifyKey) => {
+    const next = !(pending[key] ?? profile[key])
+    setPending((current) => ({ ...current, [key]: next }))
+    try {
+      await update({ [key]: next })
+    } catch {
+      /* si falla, al soltar el pendiente vuelve solo a lo que dice el perfil */
+    } finally {
+      setPending(({ [key]: _ignored, ...rest }) => rest)
+    }
+  }
+
+  const rows: { key: NotifyKey; icon: React.ReactNode; title: string; subtitle: string }[] = [
+    {
+      key: 'notifyNudge',
+      icon: <Bell size={18} strokeWidth={2.5} />,
+      title: 'Recordatorio de entreno',
+      subtitle: trainingSlot
+        ? `Si no marcaste, ${NUDGE_LABEL[trainingSlot]}. Una vez por día.`
+        : 'Elige tu horario de entreno arriba para saber cuándo avisarte.',
+    },
+    {
+      key: 'notifyPosts',
+      icon: <Users size={18} strokeWidth={2.5} />,
+      title: 'Entrenos de tus grupos',
+      subtitle: 'Cuando alguien de tus grupos marca el suyo.',
+    },
+    {
+      key: 'notifyComments',
+      icon: <MessageCircle size={18} strokeWidth={2.5} />,
+      title: 'Comentarios',
+      subtitle: 'Cuando comentan tu entreno.',
+    },
+    {
+      key: 'notifyVotes',
+      icon: <Flame size={18} strokeWidth={2.5} />,
+      title: 'Aura y laura',
+      subtitle: 'Cuando votan tu entreno.',
+    },
+    {
+      key: 'notifyFriends',
+      icon: <UserPlus size={18} strokeWidth={2.5} />,
+      title: 'Solicitudes de amistad',
+      subtitle: 'Cuando alguien te quiere agregar.',
+    },
+  ]
+
+  return (
+    <div className="flex flex-col gap-2 pt-1">
+      {rows.map((row) => {
+        const checked = pending[row.key] ?? profile[row.key]
+        return (
+          <Switch
+            key={row.key}
+            checked={checked}
+            onChange={() => void toggle(row.key)}
+            title={row.title}
+            subtitle={row.subtitle}
+            leading={
+              <span
+                className={`grid place-items-center size-9 shrink-0 rounded-[var(--radius-sm)] ${
+                  checked ? 'bg-ink-800 text-ink-100' : 'bg-ink-850 text-ink-500'
+                }`}
+              >
+                {row.icon}
+              </span>
+            }
+          />
+        )
+      })}
+    </div>
   )
 }
 
@@ -198,7 +287,7 @@ function Step({ number, icon, children }: { number: number; icon?: React.ReactNo
 function Section({ children }: { children: React.ReactNode }) {
   return (
     <section className="flex flex-col gap-3">
-      <CardLabel className="mb-0">Recordatorios</CardLabel>
+      <CardLabel className="mb-0">Notificaciones</CardLabel>
       {children}
     </section>
   )

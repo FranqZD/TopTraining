@@ -80,6 +80,11 @@ const PROFILE_SELECT = {
   timeZone: true,
   friendCode: true,
   onboardingCompleted: true,
+  notifyNudge: true,
+  notifyPosts: true,
+  notifyComments: true,
+  notifyVotes: true,
+  notifyFriends: true,
 } as const
 
 /* ---------------------------------------------------------------------------
@@ -164,12 +169,17 @@ app.post('/api/push/test', requireAuth, async (req, res) => {
     res.status(503).json({ error: 'El push no está configurado en este servidor' })
     return
   }
-  const delivered = await sendToUser(req.userId!, {
-    title: 'Probando, probando',
-    body: 'Si ves esto, los recordatorios ya funcionan.',
-    url: '/settings',
-    tag: 'test',
-  })
+  const delivered = await sendToUser(
+    req.userId!,
+    {
+      title: 'Probando, probando',
+      body: 'Si ves esto, los avisos ya funcionan.',
+      url: '/settings',
+      tag: 'test',
+    },
+    // La prueba la pidió el usuario apretando un botón: no mira interruptores.
+    'test',
+  )
   res.json({ delivered })
 })
 
@@ -207,6 +217,12 @@ const profilePatchSchema = z
     /// La manda el navegador solo: el cron la necesita para saber qué hora es
     /// para el usuario. Nunca se le pregunta.
     timeZone: z.string().max(64).optional(),
+    /// Interruptores de avisos, uno por tipo.
+    notifyNudge: z.boolean().optional(),
+    notifyPosts: z.boolean().optional(),
+    notifyComments: z.boolean().optional(),
+    notifyVotes: z.boolean().optional(),
+    notifyFriends: z.boolean().optional(),
   })
   .strict()
 

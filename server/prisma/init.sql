@@ -15,7 +15,12 @@ CREATE TABLE IF NOT EXISTS "user" (
     "weeklyFrequency" INTEGER,
     "timeZone" TEXT,
     "friendCode" TEXT NOT NULL,
-    "onboardingCompleted" BOOLEAN NOT NULL DEFAULT false
+    "onboardingCompleted" BOOLEAN NOT NULL DEFAULT false,
+    "notifyNudge" BOOLEAN NOT NULL DEFAULT true,
+    "notifyPosts" BOOLEAN NOT NULL DEFAULT true,
+    "notifyComments" BOOLEAN NOT NULL DEFAULT true,
+    "notifyVotes" BOOLEAN NOT NULL DEFAULT true,
+    "notifyFriends" BOOLEAN NOT NULL DEFAULT true
 );
 
 CREATE TABLE IF NOT EXISTS "session" (

@@ -1,5 +1,5 @@
 import { prisma } from './db.js'
-import { sendToUser } from './push.js'
+import { sendToUser, sendToUsers } from './push.js'
 
 /**
  * Avisos que dispara la gente, no el reloj (el recordatorio de entrenar vive
@@ -10,6 +10,8 @@ import { sendToUser } from './push.js'
  *  - Nunca tumban el pedido que los originó. Se lanzan con `fireAndForget()`
  *    después de responder: que el push falle no puede volver un comentario
  *    guardado en un error en pantalla.
+ *  - Quién quiere recibir qué no se decide acá: el `kind` que va en cada envío
+ *    lo resuelve `push.ts` contra los interruptores del perfil.
  *  - El `tag` agrupa lo repetido. Como el service worker manda `renotify:
  *    false`, un aviso que reemplaza a otro del mismo tag entra callado: por eso
  *    los votos usan tag por votante y post, y así el que se pone a prender y
@@ -55,19 +57,30 @@ export async function notifyNewCheckIn(checkIn: {
     select: { userId: true, groupId: true },
   })
 
-  const targets = new Map<string, string>()
+  // Un aviso por persona aunque compartan tres grupos, y agrupados por grupo
+  // para mandarlos de a tandas en vez de uno por uno.
+  const seen = new Set<string>()
+  const byGroup = new Map<string, string[]>()
   for (const member of members) {
-    if (!targets.has(member.userId)) targets.set(member.userId, member.groupId)
+    if (seen.has(member.userId)) continue
+    seen.add(member.userId)
+    const group = byGroup.get(member.groupId)
+    if (group) group.push(member.userId)
+    else byGroup.set(member.groupId, [member.userId])
   }
 
   await Promise.all(
-    [...targets].map(([userId, groupId]) =>
-      sendToUser(userId, {
-        title: `${author.name} ya entrenó`,
-        body: checkIn.note ? short(checkIn.note) : 'Marcó su entreno. ¿Y el tuyo?',
-        url: `/groups/${groupId}`,
-        tag: `post:${checkIn.id}`,
-      }),
+    [...byGroup].map(([groupId, userIds]) =>
+      sendToUsers(
+        userIds,
+        {
+          title: `${author.name} ya entrenó`,
+          body: checkIn.note ? short(checkIn.note) : 'Marcó su entreno. ¿Y el tuyo?',
+          url: `/groups/${groupId}`,
+          tag: `post:${checkIn.id}`,
+        },
+        'post',
+      ),
     ),
   )
 }
@@ -88,12 +101,16 @@ export async function notifyComment(comment: {
   })
   if (!author) return
 
-  await sendToUser(comment.ownerId, {
-    title: `${author.name} comentó tu entreno`,
-    body: short(comment.body),
-    url: `/u/${comment.ownerId}`,
-    tag: `comment:${comment.id}`,
-  })
+  await sendToUser(
+    comment.ownerId,
+    {
+      title: `${author.name} comentó tu entreno`,
+      body: short(comment.body),
+      url: `/u/${comment.ownerId}`,
+      tag: `comment:${comment.id}`,
+    },
+    'comment',
+  )
 }
 
 /** Te votaron. Solo al ponerlo: sacarlo o moverlo a otro post no avisa nada. */
@@ -112,12 +129,16 @@ export async function notifyVote(vote: {
   if (!voter) return
 
   const aura = vote.kind === 'like'
-  await sendToUser(vote.ownerId, {
-    title: `${voter.name} te dio ${aura ? 'aura' : 'laura'}`,
-    body: aura ? 'Tu entreno de hoy le gustó a alguien.' : 'No a todos les convenció tu entreno.',
-    url: `/u/${vote.ownerId}`,
-    tag: `vote:${vote.checkInId}:${vote.voterId}`,
-  })
+  await sendToUser(
+    vote.ownerId,
+    {
+      title: `${voter.name} te dio ${aura ? 'aura' : 'laura'}`,
+      body: aura ? 'Tu entreno de hoy le gustó a alguien.' : 'No a todos les convenció tu entreno.',
+      url: `/u/${vote.ownerId}`,
+      tag: `vote:${vote.checkInId}:${vote.voterId}`,
+    },
+    'vote',
+  )
 }
 
 /** Te llegó una solicitud de amistad. */
@@ -131,10 +152,14 @@ export async function notifyFriendRequest(request: {
   })
   if (!requester) return
 
-  await sendToUser(request.addresseeId, {
-    title: `${requester.name} te quiere agregar`,
-    body: 'Tienes una solicitud de amistad esperando.',
-    url: '/friends',
-    tag: `friend:${request.requesterId}`,
-  })
+  await sendToUser(
+    request.addresseeId,
+    {
+      title: `${requester.name} te quiere agregar`,
+      body: 'Tienes una solicitud de amistad esperando.',
+      url: '/friends',
+      tag: `friend:${request.requesterId}`,
+    },
+    'friend',
+  )
 }

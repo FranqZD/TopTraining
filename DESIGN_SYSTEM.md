@@ -54,6 +54,7 @@ Ver el sistema andando: `npm run dev`.
 | `DayMark` / `StreakBadge` | cumplido · perdido · hoy · sin datos · racha | — |
 | `ProgressBar` | progreso por pasos (onboarding) | — |
 | `CheckRow` | selección múltiple (a qué amigos meto al grupo); toda la fila es táctil | no |
+| `Switch` | prender/apagar algo que ya existe (qué avisos quiero); fila táctil entera | no |
 | `WeekStreakSlot` | hueco reservado de la racha semanal en listas de gente | — |
 | `Sheet` | hoja inferior (vista de un entreno, selector de miembro) | no |
 | `StreakLabel` | la racha en una línea: días, semanas o "racha rota" | — |
@@ -260,11 +261,13 @@ Referencia de que el sistema aguanta pantallas reales:
   dibuja como texto, no como botón. La octava columna son llamas de acento:
   una por cada miembro que cumplió su meta esa semana. Tocar un día abre el
   feed de ese día.
-- **Recordatorios:** el permiso del navegador nunca se pide solo — siempre
+- **Notificaciones:** el permiso del navegador nunca se pide solo — siempre
   detrás de un botón, y en iOS recién después de que la app esté instalada.
   Las instrucciones de instalación usan `Card tone="accent"` con pasos
   numerados, porque es lo único que se puede hacer cuando el sistema no ofrece
-  ninguna API para instalar.
+  ninguna API para instalar. Los `Switch` de qué avisos recibir aparecen recién
+  con los avisos activados, y ninguno se pinta de acento: son cinco juntos y el
+  acento se usa poco.
 - **Ícono de la app:** disco rojo (`#EC3013`) con la marca blanca sobre
   carbón (`#201E1D`). Fuente: `public/icon-app-black.svg` y los PNG del
   mismo nombre (`icon-180`, `icon-192`, `icon-512`, …).

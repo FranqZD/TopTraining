@@ -133,7 +133,7 @@ function SettingsForm({ profile }: { profile: Profile }) {
           {reaction && <p className={cn('text-caption', TONE_TEXT[reaction.tone])}>{reaction.text}.</p>}
         </Section>
 
-        {/* --- Recordatorios: la hora sale del horario de entreno de arriba --- */}
+        {/* --- Avisos: la hora del recordatorio sale del horario de arriba --- */}
         <PushSettings trainingSlot={profile.trainingSlot} />
 
         {/* --- Código de amistad --- */}

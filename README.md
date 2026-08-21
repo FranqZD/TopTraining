@@ -209,6 +209,18 @@ Salen **después** de responder el pedido: que el push falle no puede convertir
 un comentario guardado en un error en pantalla. Nadie se avisa a sí mismo, y
 quitar o mover un voto no manda nada — solo ponerlo.
 
+### Qué avisos quiero
+
+Cada tipo (los cuatro de arriba más el recordatorio) tiene su interruptor en
+Ajustes, guardado en el perfil: apagarlo en el teléfono lo apaga también en la
+tablet. Todos arrancan prendidos, incluso para quien ya estaba antes de que
+existieran.
+
+El filtro vive en `sendToUsers()`, no en cada quien manda: el `kind` es un
+parámetro obligatorio, así que **un aviso nuevo no puede olvidarse de respetar
+el interruptor — sin `kind` no compila**. La única excepción es `test`, que no
+mira nada porque lo pidió el usuario apretando un botón.
+
 Lo repetido se agrupa por `tag` en vez de apilarse. Como el service worker usa
 `renotify: false`, un aviso que reemplaza a otro del mismo tag entra callado:
 por eso el tag del voto incluye votante y post, y el que se pone a prender y

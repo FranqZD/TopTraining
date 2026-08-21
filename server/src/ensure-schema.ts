@@ -40,6 +40,17 @@ export async function ensureSchema(): Promise<void> {
       CREATE INDEX IF NOT EXISTS "vote_checkInId_idx" ON "vote"("checkInId");
     `)
 
+    // Interruptores de avisos: columnas nuevas sobre una tabla que ya tiene
+    // gente adentro. Todas arrancan prendidas, así nadie deja de recibir lo
+    // que venía recibiendo.
+    await addMissingColumns(client, 'user', [
+      ['notifyNudge', 'BOOLEAN NOT NULL DEFAULT true'],
+      ['notifyPosts', 'BOOLEAN NOT NULL DEFAULT true'],
+      ['notifyComments', 'BOOLEAN NOT NULL DEFAULT true'],
+      ['notifyVotes', 'BOOLEAN NOT NULL DEFAULT true'],
+      ['notifyFriends', 'BOOLEAN NOT NULL DEFAULT true'],
+    ])
+
     // El voto pasó a estar racionado: uno de cada tipo por día. Los votos
     // viejos pueden violar el índice nuevo, así que hay que limpiarlos —una
     // sola vez— antes de crearlo.
@@ -59,5 +70,24 @@ export async function ensureSchema(): Promise<void> {
     }
   } finally {
     client.close()
+  }
+}
+
+/**
+ * `ALTER TABLE ADD COLUMN` de las que falten. SQLite no tiene `IF NOT EXISTS`
+ * para columnas, así que primero se pregunta qué hay.
+ */
+async function addMissingColumns(
+  client: ReturnType<typeof createClient>,
+  table: string,
+  columns: [name: string, definition: string][],
+): Promise<void> {
+  const info = await client.execute(`PRAGMA table_info("${table}")`)
+  const existing = new Set(info.rows.map((row) => String(row.name)))
+
+  for (const [name, definition] of columns) {
+    if (existing.has(name)) continue
+    await client.execute(`ALTER TABLE "${table}" ADD COLUMN "${name}" ${definition}`)
+    console.log(`[db] columna ${table}.${name} agregada`)
   }
 }
