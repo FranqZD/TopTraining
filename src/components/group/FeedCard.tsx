@@ -80,12 +80,14 @@ export function FeedCard({
           ) : (
             <header className="flex items-center gap-3 min-w-0 flex-1">{identity}</header>
           )}
+        </div>
 
-          <div className="shrink-0 relative text-right leading-none pt-4">
-            <p className="num text-caption text-danger absolute top-0 right-0">{laura}</p>
+        <div className="flex items-end justify-between gap-3">
+          <div className="leading-none">
             <p className="num text-headline text-success">{aura}</p>
             <p className="tape text-success mt-1">de aura</p>
           </div>
+          <p className="num text-headline text-danger leading-none">{laura}</p>
         </div>
 
         <div
