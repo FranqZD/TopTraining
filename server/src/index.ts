@@ -646,6 +646,9 @@ const createGroupSchema = z.object({
 function groupSummary(
   group: { id: string; name: string; baseGoal: number; inviteCode: string; ownerId: string; _count: { members: number } },
   membership: { personalGoal: number | null; role: string },
+  /** Cuántos ya marcaron hoy. Solo lo calcula la lista de la Home, que es
+   *  donde se muestra; el resto de las pantallas recibe 0 y lo ignora. */
+  metToday = 0,
 ) {
   return {
     id: group.id,
@@ -657,6 +660,7 @@ function groupSummary(
     personalGoal: membership.personalGoal,
     /** Lo que realmente le exigimos a este usuario en este grupo. */
     effectiveGoal: membership.personalGoal ?? group.baseGoal,
+    metToday,
   }
 }
 
@@ -666,8 +670,37 @@ app.get('/api/groups', requireAuth, async (req, res) => {
     include: { group: { include: { _count: { select: { members: true } } } } },
     orderBy: { joinedAt: 'asc' },
   })
-  res.json(memberships.map((m) => groupSummary(m.group, m)))
+
+  const metToday = await metTodayByGroup(
+    memberships.map((membership) => membership.groupId),
+    todayFor(req),
+  )
+  res.json(memberships.map((m) => groupSummary(m.group, m, metToday.get(m.groupId) ?? 0)))
 })
+
+/**
+ * Cuánta gente de cada grupo ya marcó hoy. Dos consultas para todos los grupos
+ * juntos: una por grupo convertiría la Home en una ráfaga de queries.
+ */
+async function metTodayByGroup(groupIds: string[], today: string): Promise<Map<string, number>> {
+  const counts = new Map<string, number>()
+  if (groupIds.length === 0) return counts
+
+  const members = await prisma.groupMember.findMany({
+    where: { groupId: { in: groupIds } },
+    select: { groupId: true, userId: true },
+  })
+  const checkIns = await prisma.checkIn.findMany({
+    where: { day: today, userId: { in: [...new Set(members.map((member) => member.userId))] } },
+    select: { userId: true },
+  })
+
+  const trained = new Set(checkIns.map((checkIn) => checkIn.userId))
+  for (const member of members) {
+    if (trained.has(member.userId)) counts.set(member.groupId, (counts.get(member.groupId) ?? 0) + 1)
+  }
+  return counts
+}
 
 app.post('/api/groups', requireAuth, async (req, res) => {
   const parsed = createGroupSchema.safeParse(req.body)

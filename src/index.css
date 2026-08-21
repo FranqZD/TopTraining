@@ -139,6 +139,16 @@
     padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1.5rem);
   }
 
+  /* Carrusel horizontal (los grupos en la Home). La barra de scroll sobra:
+     que la última tarjeta se vea cortada ya dice que hay más para el costado. */
+  .scroll-x {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .scroll-x::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Presión física: todo lo tocable se hunde apenas al presionar. */
   .pressable {
     transition:

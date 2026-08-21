@@ -103,6 +103,8 @@ export interface Group {
   personalGoal: number | null
   /** personalGoal ?? baseGoal — lo que realmente te exige el grupo. */
   effectiveGoal: number
+  /** Cuántos miembros ya marcaron hoy. Solo lo llena la lista de la Home. */
+  metToday: number
 }
 
 export interface GroupMemberView extends Friend {
@@ -291,6 +293,19 @@ export function localMonth(date = new Date()): string {
 export function shiftDay(day: string, days: number): string {
   const [year, month, date] = day.split('-').map(Number)
   return new Date(Date.UTC(year!, month! - 1, date! + days)).toISOString().slice(0, 10)
+}
+
+/** Lunes de la semana de ese día. Lunes → domingo, igual que en el servidor. */
+export function weekStart(day: string): string {
+  const [year, month, date] = day.split('-').map(Number)
+  // getUTCDay: 0 = domingo. Lo pasamos a 0 = lunes.
+  const weekday = (new Date(Date.UTC(year!, month! - 1, date!)).getUTCDay() + 6) % 7
+  return shiftDay(day, -weekday)
+}
+
+/** Los siete días de esa semana, de lunes a domingo. */
+export function weekDays(monday: string): string[] {
+  return Array.from({ length: 7 }, (_, index) => shiftDay(monday, index))
 }
 
 /**
