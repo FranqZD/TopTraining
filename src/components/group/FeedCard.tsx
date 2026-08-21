@@ -43,19 +43,16 @@ export function FeedCard({
     <>
       <Avatar name={item.author.name} image={item.author.image} size={40} />
       <div className="flex-1 min-w-0">
-        <p className="font-bold truncate leading-tight">{item.author.name}</p>
-        <p className="tape text-text-faint mt-0.5 flex items-center gap-1.5">
-          <span>{relativeTime(item.createdAt)}</span>
+        <p className="flex items-center gap-1.5 min-w-0">
+          <span className="font-bold truncate leading-tight">{item.author.name}</span>
           {item.streaks.daily > 0 && (
-            <>
-              <span aria-hidden>·</span>
-              <span className="inline-flex items-center gap-0.5 text-accent">
-                <Flame size={11} strokeWidth={2.5} fill="currentColor" />
-                {item.streaks.daily} {item.streaks.daily === 1 ? 'día' : 'días'}
-              </span>
-            </>
+            <span className="inline-flex items-center gap-0.5 text-accent shrink-0">
+              <Flame size={12} strokeWidth={2.5} fill="currentColor" />
+              <span className="num text-caption">{item.streaks.daily}</span>
+            </span>
           )}
         </p>
+        <p className="tape text-text-faint mt-0.5">{relativeTime(item.createdAt)}</p>
       </div>
     </>
   )

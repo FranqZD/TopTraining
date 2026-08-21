@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Loader2 } from 'lucide-react'
-import { Button, Card } from '../ui'
-import type { FeedItem, FeedPage, VoteResult } from '../../lib/api'
+import { Button, Card, CardLabel } from '../ui'
+import { localDay, shiftDay, type FeedItem, type FeedPage, type VoteResult } from '../../lib/api'
 import { CheckInSheet } from './CheckInSheet'
 import { FeedCard } from './FeedCard'
 import { applyVoteResult } from './VoteBar'
@@ -102,18 +102,23 @@ export function FeedList({
 
   return (
     <>
-      <div className="flex flex-col gap-3">
-        {items.map((item, index) => (
-          <FeedCard
-            key={item.id}
-            item={item}
-            index={index}
-            onOpen={() => setOpenId(item.id)}
-            onAuthor={onAuthor}
-            flexToday={flexToday}
-            onVoted={onVoted}
-            memberCount={memberCount}
-          />
+      <div className="flex flex-col gap-8">
+        {groupByDay(items).map((section) => (
+          <section key={section.day} className="flex flex-col gap-3">
+            <CardLabel className="mb-0">{feedDayLabel(section.day)}</CardLabel>
+            {section.items.map((item, index) => (
+              <FeedCard
+                key={item.id}
+                item={item}
+                index={index}
+                onOpen={() => setOpenId(item.id)}
+                onAuthor={onAuthor}
+                flexToday={flexToday}
+                onVoted={onVoted}
+                memberCount={memberCount}
+              />
+            ))}
+          </section>
         ))}
 
         <div ref={sentinel} className="h-4" />
@@ -147,4 +152,29 @@ export function FeedList({
       />
     </>
   )
+}
+
+function groupByDay(items: FeedItem[]): { day: string; items: FeedItem[] }[] {
+  const sections: { day: string; items: FeedItem[] }[] = []
+  for (const item of items) {
+    const last = sections[sections.length - 1]
+    if (last && last.day === item.day) last.items.push(item)
+    else sections.push({ day: item.day, items: [item] })
+  }
+  return sections
+}
+
+function feedDayLabel(day: string): string {
+  const today = localDay()
+  if (day === today) return 'Hoy'
+  if (day === shiftDay(today, -1)) return 'Ayer'
+  const [year, month, date] = day.split('-').map(Number)
+  const label = new Date(Date.UTC(year!, month! - 1, date)).toLocaleDateString('es', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: year !== Number(today.slice(0, 4)) ? 'numeric' : undefined,
+    timeZone: 'UTC',
+  })
+  return label.charAt(0).toUpperCase() + label.slice(1)
 }

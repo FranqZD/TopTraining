@@ -57,7 +57,8 @@ export function VoteBar({
         tone="success"
         onClick={() => void toggle('like')}
       >
-        <Flame size={22} strokeWidth={2.5} fill={mine.has('like') ? 'currentColor' : 'none'} />
+        <Flame size={18} strokeWidth={2.5} fill={mine.has('like') ? 'currentColor' : 'none'} />
+        <span className="tape">Aura</span>
       </VoteCell>
 
       <VoteCell
@@ -66,8 +67,7 @@ export function VoteBar({
         tone="accent"
         onClick={() => void toggle('flex')}
       >
-        <span className="tape absolute top-1.5 right-2 text-text-faint">1/día</span>
-        <BicepsFlexed size={22} strokeWidth={2.5} fill={flexedHere ? 'currentColor' : 'none'} />
+        <BicepsFlexed size={18} strokeWidth={2.5} fill={flexedHere ? 'currentColor' : 'none'} />
       </VoteCell>
 
       <VoteCell
@@ -76,7 +76,7 @@ export function VoteBar({
         tone="danger"
         onClick={() => void toggle('laura')}
       >
-        <Banana size={22} strokeWidth={2.5} fill={mine.has('laura') ? 'currentColor' : 'none'} />
+        <Banana size={18} strokeWidth={2.5} fill={mine.has('laura') ? 'currentColor' : 'none'} />
         <span className="tape">Laura</span>
       </VoteCell>
     </div>
@@ -112,7 +112,7 @@ function VoteCell({
       aria-label={label}
       aria-pressed={active}
       className={cn(
-        'pressable relative flex flex-col items-center justify-center gap-1.5 py-3 min-h-[var(--size-control-lg)] cursor-pointer',
+        'pressable relative flex flex-col items-center justify-center gap-1 py-2 min-h-[var(--size-touch)] cursor-pointer',
         tones[tone],
       )}
     >
