@@ -163,6 +163,8 @@ export interface FeedPage {
   items: FeedItem[]
   nextCursor: string | null
   flexToday: string | null
+  /** Gente del grupo. null fuera de un grupo: la barra de aura se muestra llena. */
+  memberCount: number | null
 }
 
 export interface PersonFeedPage extends FeedPage {

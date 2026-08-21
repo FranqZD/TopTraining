@@ -1,4 +1,4 @@
-import { BicepsFlexed, Heart, ThumbsUp } from 'lucide-react'
+import { Banana, BicepsFlexed, Flame } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cn } from '../ui'
 import { api, localDay, EMPTY_VOTES, type FeedItem, type VoteKind, type VoteResult, type VoteTally } from '../../lib/api'
@@ -22,8 +22,8 @@ export function applyVoteResult(items: FeedItem[], targetId: string, result: Vot
 }
 
 /**
- * Tres votos: aura, laura, y el músculo (súper voto, uno por día).
- * Aura y Laura se pisan entre sí. El músculo, si ya lo usaste, se mueve.
+ * Tres votos a lo ancho de la card: aura (fuego), músculo (uno por día) y
+ * laura (plátano). Aura y Laura se pisan. El músculo, si ya lo usaste, se mueve.
  */
 export function VoteBar({
   checkInId,
@@ -50,53 +50,61 @@ export function VoteBar({
   }
 
   return (
-    <div className="flex items-center gap-1">
-      <VoteButton
+    <div className="grid grid-cols-3 gap-px overflow-hidden rounded-[var(--radius-md)] bg-ink-800">
+      <VoteCell
         label="Aura"
-        count={tally.like}
         active={mine.has('like')}
-        activeClass="text-text"
+        tone="success"
         onClick={() => void toggle('like')}
       >
-        <ThumbsUp size={18} strokeWidth={2.5} fill={mine.has('like') ? 'currentColor' : 'none'} />
-      </VoteButton>
-      <VoteButton
-        label="Laura"
-        count={tally.laura}
-        active={mine.has('laura')}
-        activeClass="text-text"
-        onClick={() => void toggle('laura')}
-      >
-        <Heart size={18} strokeWidth={2.5} fill={mine.has('laura') ? 'currentColor' : 'none'} />
-      </VoteButton>
-      <VoteButton
-        label={flexedElsewhere ? 'Mover el músculo acá' : 'Súper voto'}
-        count={tally.flex}
+        <Flame size={22} strokeWidth={2.5} fill={mine.has('like') ? 'currentColor' : 'none'} />
+        <span className="tape">Aura</span>
+      </VoteCell>
+
+      <VoteCell
+        label={flexedElsewhere ? 'Mover el súper voto acá' : 'Súper voto, uno por día'}
         active={flexedHere}
-        activeClass="text-accent"
+        tone="accent"
         onClick={() => void toggle('flex')}
       >
-        <BicepsFlexed size={18} strokeWidth={2.5} fill={flexedHere ? 'currentColor' : 'none'} />
-      </VoteButton>
+        <span className="tape absolute top-1.5 right-2 text-text-faint">1/día</span>
+        <BicepsFlexed size={22} strokeWidth={2.5} fill={flexedHere ? 'currentColor' : 'none'} />
+      </VoteCell>
+
+      <VoteCell
+        label="Laura"
+        active={mine.has('laura')}
+        tone="danger"
+        onClick={() => void toggle('laura')}
+      >
+        <Banana size={22} strokeWidth={2.5} fill={mine.has('laura') ? 'currentColor' : 'none'} />
+        <span className="tape text-danger">
+          Laura{tally.laura > 0 ? ` ${tally.laura}` : ''}
+        </span>
+      </VoteCell>
     </div>
   )
 }
 
-function VoteButton({
+function VoteCell({
   label,
-  count,
   active,
-  activeClass,
+  tone,
   onClick,
   children,
 }: {
   label: string
-  count: number
   active: boolean
-  activeClass: string
+  tone: 'success' | 'accent' | 'danger'
   onClick: () => void
   children: ReactNode
 }) {
+  const tones = {
+    success: active ? 'bg-success-tint text-success' : 'bg-ink-850 text-success/80',
+    accent: active ? 'bg-accent-tint text-accent' : 'bg-ink-850 text-text-muted',
+    danger: active ? 'bg-danger-tint text-danger' : 'bg-ink-850 text-danger',
+  }
+
   return (
     <button
       type="button"
@@ -107,12 +115,11 @@ function VoteButton({
       aria-label={label}
       aria-pressed={active}
       className={cn(
-        'pressable inline-flex items-center gap-1.5 min-h-[var(--size-touch)] px-2.5 -ml-2 rounded-[var(--radius-sm)] cursor-pointer',
-        active ? activeClass : 'text-text-faint hover:text-text',
+        'pressable relative flex flex-col items-center justify-center gap-1.5 py-3 min-h-[var(--size-control-lg)] cursor-pointer',
+        tones[tone],
       )}
     >
       {children}
-      {count > 0 && <span className="num text-caption leading-none">{count}</span>}
     </button>
   )
 }

@@ -2,7 +2,10 @@
 <html lang="es" data-theme="ember">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
     <meta name="theme-color" content="#0A0A0B" />
     <meta name="description" content="Top Training — entrena con tus amigos. O aguántate la vergüenza." />
     <link rel="icon" type="image/svg+xml" href="/icon-app-black.svg" />
@@ -21,6 +24,37 @@
       rel="stylesheet"
     />
     <title>Top Training</title>
+    <script>
+      /* PWA a escala fija: sin pellizco, sin doble toque, sin Ctrl/⌘ + rueda. */
+      (function () {
+        const stop = (event) => event.preventDefault()
+        document.addEventListener('gesturestart', stop)
+        document.addEventListener('gesturechange', stop)
+        document.addEventListener('gestureend', stop)
+        document.addEventListener(
+          'touchmove',
+          (event) => {
+            if (event.touches.length > 1) event.preventDefault()
+          },
+          { passive: false },
+        )
+        document.addEventListener(
+          'wheel',
+          (event) => {
+            if (event.ctrlKey) event.preventDefault()
+          },
+          { passive: false },
+        )
+        document.addEventListener('keydown', (event) => {
+          if (
+            (event.ctrlKey || event.metaKey) &&
+            (event.key === '+' || event.key === '-' || event.key === '=' || event.key === '_' || event.key === '0')
+          ) {
+            event.preventDefault()
+          }
+        })
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

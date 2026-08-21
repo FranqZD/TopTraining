@@ -599,6 +599,7 @@ app.get('/api/users/:id/feed', requireAuth, async (req, res) => {
     })),
     nextCursor: hasMore ? page[page.length - 1]!.id : null,
     flexToday,
+    memberCount: null,
   })
 })
 
@@ -818,6 +819,7 @@ app.get('/api/groups/:id/feed', requireAuth, async (req, res) => {
     })),
     nextCursor: hasMore ? page[page.length - 1]!.id : null,
     flexToday,
+    memberCount: memberIds.length,
   })
 })
 

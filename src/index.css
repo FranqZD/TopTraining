@@ -8,11 +8,15 @@
 @layer base {
   * {
     -webkit-tap-highlight-color: transparent;
+    /* pan-x/pan-y: se puede scrollear, no pellizcar ni hacer doble toque para zoom. */
+    touch-action: pan-x pan-y;
   }
 
   html {
     background-color: var(--color-ink-1000);
     color-scheme: dark;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   body {

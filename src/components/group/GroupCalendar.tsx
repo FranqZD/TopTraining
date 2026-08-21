@@ -258,12 +258,14 @@ function DaySheet({ groupId, day, onClose }: { groupId: string; day: string | nu
   const [loading, setLoading] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
   const [flexToday, setFlexToday] = useState<string | null>(null)
+  const [memberCount, setMemberCount] = useState<number | null>(null)
 
   useEffect(() => {
     if (!day) {
       setItems([])
       setOpenId(null)
       setFlexToday(null)
+      setMemberCount(null)
       return
     }
     setLoading(true)
@@ -273,6 +275,7 @@ function DaySheet({ groupId, day, onClose }: { groupId: string; day: string | nu
       .then((page) => {
         setItems(page.items)
         setFlexToday(page.flexToday)
+        setMemberCount(page.memberCount)
       })
       .catch(() => setItems([]))
       .finally(() => setLoading(false))
@@ -306,6 +309,7 @@ function DaySheet({ groupId, day, onClose }: { groupId: string; day: string | nu
                 }}
                 flexToday={flexToday}
                 onVoted={onVoted}
+                memberCount={memberCount}
               />
             ))}
           </div>
