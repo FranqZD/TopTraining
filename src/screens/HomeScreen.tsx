@@ -2,24 +2,23 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { ChevronRight, Flame, Plus, Settings, Users } from 'lucide-react'
 import { Avatar, Card, CardLabel, DayMark } from '../components/ui'
-import { api, localDay, type CheckIn, type Friend, type FriendRequests, type Group } from '../lib/api'
+import { api, localDay, type CheckIn, type FriendRequests, type Group } from '../lib/api'
 import { thumbnail } from '../lib/photo'
 import { useProfile } from '../profile/useProfile'
 
 /**
- * Home. El orden no es casual: primero la acción del día, después tus grupos,
- * después la gente. Lo que se hace todos los días va arriba de todo.
+ * Home. El orden no es casual: primero la acción del día y después tus grupos,
+ * que es lo que se mira todos los días. Amigos y ajustes viven en el encabezado
+ * como íconos: se entra de vez en cuando y no compiten con lo de arriba.
  */
 export function HomeScreen() {
   const { profile } = useProfile()
   const [groups, setGroups] = useState<Group[]>([])
-  const [friends, setFriends] = useState<Friend[]>([])
   const [pending, setPending] = useState(0)
   const [todaysCheckIn, setTodaysCheckIn] = useState<CheckIn | null>(null)
 
   useEffect(() => {
     api.get<Group[]>('/groups').then(setGroups).catch(() => setGroups([]))
-    api.get<Friend[]>('/friends').then(setFriends).catch(() => setFriends([]))
     api
       .get<FriendRequests>('/friends/requests')
       .then((requests) => setPending(requests.incoming.length))
@@ -46,13 +45,29 @@ export function HomeScreen() {
               <p className="text-title truncate">{profile.name}</p>
             </div>
           </div>
-          <Link
-            to="/settings"
-            aria-label="Ajustes"
-            className="pressable grid place-items-center size-11 rounded-[var(--radius-md)] bg-ink-850 border border-ink-700 text-ink-300 hover:text-ink-50"
-          >
-            <Settings size={20} strokeWidth={2.5} />
-          </Link>
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Sin tarjeta, las solicitudes pendientes se verían recién al
+                entrar: el contador es lo que las mantiene a la vista. */}
+            <Link
+              to="/friends"
+              aria-label={pending > 0 ? `Amigos, ${pending} pendientes` : 'Amigos'}
+              className="pressable relative grid place-items-center size-11 rounded-[var(--radius-md)] bg-ink-850 border border-ink-700 text-ink-300 hover:text-ink-50"
+            >
+              <Users size={20} strokeWidth={2.5} />
+              {pending > 0 && (
+                <span className="num absolute -top-1 -right-1 grid place-items-center min-w-5 h-5 px-1 rounded-[var(--radius-pill)] bg-accent text-on-accent text-micro">
+                  {pending}
+                </span>
+              )}
+            </Link>
+            <Link
+              to="/settings"
+              aria-label="Ajustes"
+              className="pressable grid place-items-center size-11 rounded-[var(--radius-md)] bg-ink-850 border border-ink-700 text-ink-300 hover:text-ink-50"
+            >
+              <Settings size={20} strokeWidth={2.5} />
+            </Link>
+          </div>
         </header>
 
         {/* ------------------------------------------------------------------
@@ -98,7 +113,7 @@ export function HomeScreen() {
         </section>
 
         {/* --- Grupos --- */}
-        <section className="flex flex-col gap-3">
+        <section className="flex flex-col gap-3 pb-10">
           <div className="flex items-center justify-between gap-3">
             <CardLabel className="mb-0">Tus grupos ({groups.length})</CardLabel>
             <Link to="/groups/join" className="tape text-accent hover:underline">
@@ -143,31 +158,6 @@ export function HomeScreen() {
           >
             <Plus size={20} strokeWidth={3} />
             Crear un grupo
-          </Link>
-        </section>
-
-        {/* --- Amigos --- */}
-        <section className="flex flex-col gap-3 pb-10">
-          <CardLabel className="mb-0">Gente</CardLabel>
-          <Link
-            to="/friends"
-            className="pressable flex items-center gap-3 p-4 rounded-[var(--radius-lg)] bg-surface border border-line-soft hover:border-ink-600"
-          >
-            <span className="grid place-items-center size-11 rounded-[var(--radius-md)] bg-ink-850 border border-ink-700 text-ink-300 shrink-0">
-              <Users size={20} strokeWidth={2.5} />
-            </span>
-            <span className="flex-1 min-w-0">
-              <span className="block font-bold leading-tight">Amigos</span>
-              <span className="block text-caption text-text-faint">
-                {friends.length === 0 ? 'Todavía nadie' : `${friends.length} en total`}
-              </span>
-            </span>
-            {pending > 0 && (
-              <span className="tape px-2 py-1 rounded-[var(--radius-pill)] bg-accent text-on-accent shrink-0">
-                {pending} {pending === 1 ? 'solicitud' : 'solicitudes'}
-              </span>
-            )}
-            <ChevronRight size={20} strokeWidth={2.5} className="text-ink-500 shrink-0" />
           </Link>
         </section>
       </div>
