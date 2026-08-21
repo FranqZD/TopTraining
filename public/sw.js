@@ -31,11 +31,14 @@ self.addEventListener('push', (event) => {
     body: payload.body || 'Todavía estás a tiempo de entrenar hoy.',
     icon: '/icon-192.png',
     badge: '/icon-192.png',
-    // Un solo aviso a la vez: si llega otro, reemplaza al anterior.
+    // Mismo tag, un solo aviso: lo repetido (votos del mismo, posts del mismo
+    // grupo) se pisa en vez de apilarse.
     tag: payload.tag || 'toptraining',
     renotify: false,
     data: { url: payload.url || '/checkin' },
-    actions: [{ action: 'checkin', title: 'Marcar entreno' }],
+    // El atajo solo tiene sentido en el recordatorio. En un comentario o un
+    // voto, lo que quieres es abrir el post, no marcar entreno.
+    actions: payload.tag === 'nudge' ? [{ action: 'checkin', title: 'Marcar entreno' }] : [],
   }
 
   event.waitUntil(self.registration.showNotification(title, options))

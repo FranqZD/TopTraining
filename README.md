@@ -176,7 +176,7 @@ El **mes en curso** se calcula siempre al vuelo y no se guarda: viene marcado
 como `partial`. Guardarlo dejaría una foto vieja pegada a un mes que todavía
 cambia.
 
-## Recordatorios push
+## Push
 
 **Por qué Web Push directo y no OneSignal:** en iOS el push solo funciona con
 la PWA agregada a la pantalla de inicio, así que hay que construir manifest,
@@ -194,7 +194,27 @@ npx web-push generate-vapid-keys      # y pegar el par en server/.env
 Sin las claves `VAPID_*` la app funciona igual y la pantalla de Ajustes lo
 dice; el job queda apagado y lo avisa al arrancar.
 
-### El job
+### Avisos sociales
+
+Los dispara la gente, no el reloj (`server/src/notify.ts`):
+
+| Cuándo | A quién | Lleva a |
+|---|---|---|
+| Alguien marca su entreno | Todos los que comparten grupo con él | El grupo |
+| Comentan tu entreno | Al dueño del post | Tus entrenos |
+| Te dan aura o laura | Al dueño del post | Tus entrenos |
+| Te mandan solicitud de amistad | Al destinatario | Amigos |
+
+Salen **después** de responder el pedido: que el push falle no puede convertir
+un comentario guardado en un error en pantalla. Nadie se avisa a sí mismo, y
+quitar o mover un voto no manda nada — solo ponerlo.
+
+Lo repetido se agrupa por `tag` en vez de apilarse. Como el service worker usa
+`renotify: false`, un aviso que reemplaza a otro del mismo tag entra callado:
+por eso el tag del voto incluye votante y post, y el que se pone a prender y
+apagar el aura suena una sola vez.
+
+### El job de recordatorios
 
 Corre cada `PUSH_SWEEP_MINUTES` (10 por defecto) y busca gente que ya pasó su
 ventana de entreno y todavía no marcó:

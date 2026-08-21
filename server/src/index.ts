@@ -9,6 +9,13 @@ import { generateGroupCode } from './codes.js'
 import { deletePhoto, imageTransformBase, isOwnPhotoUrl, putCheckInPhoto, storageConfigured } from './storage.js'
 import { computeStreaks, shiftDay, weekDays, weekStart } from './streaks.js'
 import { pushConfigured, sendToUser, vapidPublicKey } from './push.js'
+import {
+  fireAndForget,
+  notifyComment,
+  notifyFriendRequest,
+  notifyNewCheckIn,
+  notifyVote,
+} from './notify.js'
 import { runNudgeSweep, startScheduler } from './scheduler.js'
 import { generateClosedRecaps, getRecap } from './recap.js'
 import { ensureSchema } from './ensure-schema.js'
@@ -465,6 +472,8 @@ app.post('/api/friends/request', requireAuth, async (req, res) => {
 
   await prisma.friendship.create({ data: { requesterId: req.userId!, addresseeId: target.id } })
   res.json({ status: 'pending', user: target })
+
+  fireAndForget(notifyFriendRequest({ requesterId: req.userId!, addresseeId: target.id }))
 })
 
 /** Aceptar / rechazar. Solo el destinatario puede responder su solicitud. */
@@ -1029,6 +1038,8 @@ app.post('/api/checkins', requireAuth, async (req, res) => {
     data: { userId: req.userId!, day, note, photoUrl, photoPublicId },
   })
   res.status(201).json(checkIn)
+
+  fireAndForget(notifyNewCheckIn(checkIn))
 })
 
 /**
@@ -1190,6 +1201,16 @@ app.post('/api/checkins/:id/comments', requireAuth, async (req, res) => {
     select: COMMENT_SELECT,
   })
   res.status(201).json(comment)
+
+  fireAndForget(
+    notifyComment({
+      id: comment.id,
+      body: comment.body,
+      authorId: req.userId!,
+      checkInId: checkIn.id,
+      ownerId: checkIn.userId,
+    }),
+  )
 })
 
 /**
@@ -1252,6 +1273,11 @@ app.post('/api/checkins/:id/votes', requireAuth, async (req, res) => {
   }
 
   res.json({ votes: await tallyVotes(checkInId, userId), movedFrom })
+
+  // Solo el voto que se pone avisa: sacarlo o llevárselo a otro post, no.
+  if (!existing) {
+    fireAndForget(notifyVote({ checkInId, ownerId: checkIn.userId, voterId: userId, kind }))
+  }
 })
 
 /* ------------------------------------------------------------------------- */
