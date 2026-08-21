@@ -249,6 +249,39 @@ app.patch('/api/me', requireAuth, async (req, res) => {
   res.json(user)
 })
 
+/**
+ * Cambiar la contraseña desde Ajustes. No pide la anterior: la sesión abierta
+ * en este teléfono es la credencial, y a nadie que ya perdió el teléfono lo
+ * salva pedirle la vieja. Nadie más queda afuera — las otras sesiones siguen
+ * vivas — pero el próximo login ya es con la nueva.
+ *
+ * El hash lo hace better-auth con su propia configuración; acá no se toca la
+ * tabla de cuentas a mano.
+ */
+app.post('/api/me/password', requireAuth, async (req, res) => {
+  const parsed = z.object({ password: z.string().min(8).max(128) }).safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: 'La contraseña necesita al menos 8 caracteres' })
+    return
+  }
+
+  const ctx = await auth.$context
+  const account = await ctx.internalAdapter.findCredentialAccount(req.userId!)
+  if (!account?.password) {
+    // Cuenta sin contraseña (entró con un proveedor): esa es la que sabe
+    // crearla desde cero, y de paso valida el largo mínimo configurado.
+    await auth.api.setPassword({
+      body: { newPassword: parsed.data.password },
+      headers: fromNodeHeaders(req.headers),
+    })
+    res.json({ ok: true })
+    return
+  }
+
+  await ctx.internalAdapter.updatePassword(req.userId!, await ctx.password.hash(parsed.data.password))
+  res.json({ ok: true })
+})
+
 /* ---------------------------------------------------------------------------
    Helpers de rachas y permisos
    ------------------------------------------------------------------------- */

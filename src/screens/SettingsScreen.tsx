@@ -1,10 +1,9 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { motion } from 'motion/react'
-import { ArrowLeft, Check, Copy, LogOut, Moon, Sunrise, Sun } from 'lucide-react'
+import { ArrowLeft, Check, KeyRound, LogOut, Moon, Sunrise, Sun } from 'lucide-react'
 import {
   Button,
-  Card,
   CardLabel,
   ChoiceGroup,
   NumberStepper,
@@ -15,6 +14,7 @@ import {
 import { PushSettings } from '../components/settings/PushSettings'
 import { useProfile } from '../profile/useProfile'
 import { signOut } from '../lib/auth-client'
+import { api, ApiError } from '../lib/api'
 import type { Profile, TrainingSlot } from '../lib/api'
 import { FREQUENCY_REACTIONS, TONE_TEXT } from './onboarding/frequency-reactions'
 
@@ -35,7 +35,6 @@ function SettingsForm({ profile }: { profile: Profile }) {
   const { update } = useProfile()
   const navigate = useNavigate()
   const [saved, setSaved] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
 
   const [name, setName] = useState(profile.name)
   const [weight, setWeight] = useState(profile.targetWeightKg ?? 75)
@@ -56,16 +55,6 @@ function SettingsForm({ profile }: { profile: Profile }) {
     setWeight(next)
     if (weightTimer.current) clearTimeout(weightTimer.current)
     weightTimer.current = setTimeout(() => void save({ targetWeightKg: next }, 'weight'), 600)
-  }
-
-  const copyCode = async () => {
-    try {
-      await navigator.clipboard.writeText(profile.friendCode)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1800)
-    } catch {
-      /* sin portapapeles: el código está a la vista igual */
-    }
   }
 
   const reaction = profile.weeklyFrequency ? FREQUENCY_REACTIONS[profile.weeklyFrequency] : null
@@ -136,29 +125,14 @@ function SettingsForm({ profile }: { profile: Profile }) {
         {/* --- Avisos: la hora del recordatorio sale del horario de arriba --- */}
         <PushSettings trainingSlot={profile.trainingSlot} />
 
-        {/* --- Código de amistad --- */}
-        <Section label="Tu código de amigo">
-          <Card tone="accent" notch>
-            <div className="flex items-center justify-between gap-3">
-              <span className="num text-stat text-accent tracking-[0.08em]">{profile.friendCode}</span>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={copyCode}
-                icon={copied ? <Check size={16} strokeWidth={3} /> : <Copy size={16} strokeWidth={2.5} />}
-              >
-                {copied ? 'Copiado' : 'Copiar'}
-              </Button>
-            </div>
-            <p className="text-caption text-text-muted mt-2">Es fijo y no se puede cambiar. Compártelo con quien quieras.</p>
-          </Card>
-        </Section>
-
         {/* --- Tema --- */}
         <Section label="Paleta de la app">
           <p className="text-caption text-text-muted -mt-1">Se aplica al instante, en toda la app.</p>
           <ThemePicker />
         </Section>
+
+        {/* --- Contraseña --- */}
+        <PasswordSection />
 
         <div className="pt-2 pb-10">
           <Button
@@ -175,6 +149,81 @@ function SettingsForm({ profile }: { profile: Profile }) {
         </div>
       </div>
     </div>
+  )
+}
+
+/**
+ * Cambiar la contraseña. Va al fondo de Ajustes porque casi nunca se toca.
+ *
+ * Solo la nueva y su confirmación: la sesión abierta en este teléfono ya es
+ * la prueba de identidad, y pedir la vieja acá no protege de nada que no
+ * proteja tener el teléfono desbloqueado.
+ */
+function PasswordSection() {
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [done, setDone] = useState(false)
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setDone(false)
+
+    if (password.length < 8) {
+      setError('La contraseña necesita al menos 8 caracteres.')
+      return
+    }
+    if (password !== confirm) {
+      setError('Las dos contraseñas no son iguales.')
+      return
+    }
+
+    setError(null)
+    setBusy(true)
+    try {
+      await api.post('/me/password', { password })
+      setPassword('')
+      setConfirm('')
+      setDone(true)
+      setTimeout(() => setDone(false), 2400)
+    } catch (cause) {
+      setError(cause instanceof ApiError ? cause.message : 'No se pudo cambiar. Inténtalo de nuevo.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Section label="Cambiar contraseña" saved={done}>
+      <form onSubmit={submit} className="flex flex-col gap-3">
+        <TextField
+          name="new-password"
+          type="password"
+          autoComplete="new-password"
+          minLength={8}
+          placeholder="Nueva contraseña"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          icon={<KeyRound size={18} strokeWidth={2.5} />}
+          hint="Mínimo 8 caracteres."
+        />
+        <TextField
+          name="confirm-password"
+          type="password"
+          autoComplete="new-password"
+          minLength={8}
+          placeholder="Confirmar contraseña"
+          value={confirm}
+          onChange={(event) => setConfirm(event.target.value)}
+          icon={<KeyRound size={18} strokeWidth={2.5} />}
+          error={error}
+        />
+        <Button type="submit" fullWidth disabled={busy || password.length === 0 || confirm.length === 0}>
+          {busy ? 'Guardando…' : 'Aceptar'}
+        </Button>
+      </form>
+    </Section>
   )
 }
 

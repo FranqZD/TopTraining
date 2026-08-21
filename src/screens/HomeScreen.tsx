@@ -22,11 +22,19 @@ import { useProfile } from '../profile/useProfile'
 export function HomeScreen() {
   const { profile } = useProfile()
   const [groups, setGroups] = useState<Group[]>([])
+  /** El carrusel no se monta hasta tener los grupos: si nace con la tarjeta de
+   *  "crear" sola, el scroll-snap se ancla a ella y al llegar los grupos la
+   *  lista aparece corrida hasta el final. */
+  const [groupsLoaded, setGroupsLoaded] = useState(false)
   const [pending, setPending] = useState(0)
   const [checkIns, setCheckIns] = useState<CheckIn[]>([])
 
   useEffect(() => {
-    api.get<Group[]>(`/groups?today=${localDay()}`).then(setGroups).catch(() => setGroups([]))
+    api
+      .get<Group[]>(`/groups?today=${localDay()}`)
+      .then(setGroups)
+      .catch(() => setGroups([]))
+      .finally(() => setGroupsLoaded(true))
     api
       .get<FriendRequests>('/friends/requests')
       .then((requests) => setPending(requests.incoming.length))
@@ -150,13 +158,13 @@ export function HomeScreen() {
         {/* --- Grupos: carrusel horizontal, uno al lado del otro --- */}
         <section className="flex flex-col gap-3 pb-10">
           <div className="flex items-center justify-between gap-3">
-            <CardLabel className="mb-0">Tus grupos ({groups.length})</CardLabel>
+            <CardLabel className="mb-0">Tus grupos{groupsLoaded && ` (${groups.length})`}</CardLabel>
             <Link to="/groups/join" className="tape text-accent hover:underline">
               tengo un código
             </Link>
           </div>
 
-          {groups.length === 0 && (
+          {groupsLoaded && groups.length === 0 && (
             <Card tone="outline">
               <p className="text-body text-ink-200">Todavía no estás en ningún grupo.</p>
               <p className="text-caption text-text-faint mt-1">
@@ -167,23 +175,27 @@ export function HomeScreen() {
 
           {/* Se sale del margen del marco a propósito: la tarjeta cortada en el
               borde es lo que avisa que hay más para el costado. */}
-          <div className="scroll-x -mx-5 px-5 scroll-pl-5 flex gap-3 snap-x">
-            {groups.map((group) => (
-              <GroupCard key={group.id} group={group} />
-            ))}
+          <div className="scroll-x -mx-5 px-5 scroll-pl-5 flex gap-3 snap-x min-h-[8.5rem]">
+            {groupsLoaded && (
+              <>
+                {groups.map((group) => (
+                  <GroupCard key={group.id} group={group} />
+                ))}
 
-            <Link
-              to="/groups/new"
-              className={cn(
-                'pressable snap-start shrink-0 flex flex-col justify-center gap-2 p-4 min-h-[8.5rem]',
-                'rounded-[var(--radius-lg)] border border-dashed border-ink-600 text-ink-200',
-                'hover:border-accent hover:text-text',
-                groups.length === 0 ? 'w-full' : 'w-40',
-              )}
-            >
-              <Plus size={22} strokeWidth={3} />
-              <span className="font-bold leading-tight">Crear un grupo</span>
-            </Link>
+                <Link
+                  to="/groups/new"
+                  className={cn(
+                    'pressable snap-start shrink-0 flex flex-col justify-center gap-2 p-4 min-h-[8.5rem]',
+                    'rounded-[var(--radius-lg)] border border-dashed border-ink-600 text-ink-200',
+                    'hover:border-accent hover:text-text',
+                    groups.length === 0 ? 'w-full' : 'w-40',
+                  )}
+                >
+                  <Plus size={22} strokeWidth={3} />
+                  <span className="font-bold leading-tight">Crear un grupo</span>
+                </Link>
+              </>
+            )}
           </div>
         </section>
       </div>

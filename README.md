@@ -41,6 +41,7 @@ de uso. Es una app de uso diario: nadie debería volver a ver el login.
 | `ALL` | `/api/auth/*` | better-auth (registro, login, logout) |
 | `GET` | `/api/config` | proveedores sociales activos |
 | `GET` `PATCH` | `/api/me` | perfil (nombre, horario, peso, frecuencia, tema) |
+| `POST` | `/api/me/password` | cambiar la contraseña desde Ajustes (solo la nueva) |
 | `GET` | `/api/friends` | amigos con su racha ya calculada |
 | `GET` | `/api/friends/requests` | bandeja: recibidas y enviadas |
 | `POST` | `/api/friends/request` | mandar solicitud (por `code` o por `userId`) |
