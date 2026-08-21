@@ -1,62 +1,50 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router'
 import { motion } from 'motion/react'
-import { ChevronLeft, ChevronRight, Flame, Loader2, X } from 'lucide-react'
-import { Card, CardLabel, DayMark, cn } from '../ui'
+import { ChevronLeft, ChevronRight, Flame, Loader2 } from 'lucide-react'
+import { Card, Sheet, cn } from '../ui'
 import {
   api,
   localDay,
   localMonth,
-  relativeTime,
   shiftDay,
-  type CalendarData,
-  type CheckIn,
-  type GroupMemberView,
-  type WeekStatus,
+  type FeedItem,
+  type FeedPage,
+  type GroupCalendarData,
+  type GroupWeekStatus,
 } from '../../lib/api'
-import { thumbnail } from '../../lib/photo'
-import { MemberPicker } from './MemberPicker'
+import { FeedCard } from './FeedCard'
 import { CheckInSheet } from './CheckInSheet'
 
 const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
+const GRID = 'grid grid-cols-[repeat(7,minmax(0,1fr))_2.75rem] gap-1'
 
 /**
- * Calendario mensual de un miembro: 7 columnas de lunes a domingo y una
- * octava con el resultado de la semana (fuego si llegó a la meta, equis si no).
- *
- * Solo los días con check-in son tocables — un día vacío no tiene nada que
- * mostrar, y hacerlo parecer clickeable sería mentirle al dedo.
+ * Calendario del grupo entero: un día verde es "alguien entrenó", y la octava
+ * columna son llamas — una por cada persona que cumplió su meta esa semana.
+ * Tocar un día abre el feed de ese día, no el de una sola persona.
  */
-export function GroupCalendar({ groupId, members }: { groupId: string; members: GroupMemberView[] }) {
-  const me = members.find((member) => member.isMe) ?? members[0]
-  const [userId, setUserId] = useState(me?.id ?? '')
+export function GroupCalendar({ groupId }: { groupId: string }) {
   const [month, setMonth] = useState(localMonth())
-  const [data, setData] = useState<CalendarData | null>(null)
+  const [data, setData] = useState<GroupCalendarData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [openId, setOpenId] = useState<string | null>(null)
+  const [openDay, setOpenDay] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!userId) return
     setLoading(true)
-    const query = new URLSearchParams({ userId, month, today: localDay() })
+    const query = new URLSearchParams({ month, today: localDay() })
     api
-      .get<CalendarData>(`/groups/${groupId}/calendar?${query}`)
+      .get<GroupCalendarData>(`/groups/${groupId}/calendar?${query}`)
       .then(setData)
       .catch(() => setData(null))
       .finally(() => setLoading(false))
-  }, [groupId, userId, month])
+  }, [groupId, month])
 
-  const byDay = useMemo(
-    () => new Map((data?.checkIns ?? []).map((checkIn) => [checkIn.day, checkIn])),
-    [data],
-  )
-
+  const byDay = useMemo(() => new Map((data?.days ?? []).map((entry) => [entry.day, entry])), [data])
   const today = localDay()
 
   return (
     <div className="flex flex-col gap-4">
-      <MemberPicker members={members} value={userId} onChange={setUserId} />
-
-      {/* --- Navegación de mes --- */}
       <div className="flex items-center justify-between gap-2">
         <MonthButton onClick={() => setMonth(addMonths(month, -1))} label="Mes anterior">
           <ChevronLeft size={20} strokeWidth={2.5} />
@@ -78,56 +66,57 @@ export function GroupCalendar({ groupId, members }: { groupId: string; members: 
       ) : (
         <>
           <Card className="!p-3">
-            {/* Encabezado: 7 días + la columna de la semana */}
-            <div className="grid grid-cols-[repeat(7,1fr)_2.25rem] gap-1 mb-1">
+            <div className={cn(GRID, 'mb-1')}>
               {WEEKDAYS.map((day, index) => (
                 <span key={index} className="tape text-text-faint text-center py-1">
                   {day}
                 </span>
               ))}
-              <span className="tape text-text-faint text-center py-1">×{data.goal}</span>
+              <span className="grid place-items-center text-accent" aria-label="Cumplieron la semana">
+                <Flame size={12} strokeWidth={2.5} fill="currentColor" />
+              </span>
             </div>
 
             <div className="flex flex-col gap-1">
               {data.weeks.map((week) => (
-                <div key={week.start} className="grid grid-cols-[repeat(7,1fr)_2.25rem] gap-1">
+                <div key={week.start} className={GRID}>
                   {Array.from({ length: 7 }, (_, index) => {
                     const day = shiftDay(week.start, index)
-                    const checkIn = byDay.get(day)
+                    const entry = byDay.get(day)
+                    const count = entry?.count ?? 0
                     return (
                       <DayCell
                         key={day}
                         day={day}
                         inMonth={day.slice(0, 7) === data.month}
                         isToday={day === today}
-                        hasPhoto={Boolean(checkIn?.photoUrl)}
-                        onOpen={checkIn ? () => setOpenId(checkIn.id) : undefined}
+                        count={count}
+                        hasPhoto={Boolean(entry?.hasPhoto)}
+                        onOpen={count > 0 ? () => setOpenDay(day) : undefined}
                       />
                     )
                   })}
-                  <WeekCell status={week.status} count={week.count} goal={week.goal} />
+                  <WeekCell status={week.status} metCount={week.metCount} memberCount={week.memberCount} />
                 </div>
               ))}
             </div>
           </Card>
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <Legend icon={<Flame size={13} strokeWidth={2.5} fill="currentColor" />} className="text-accent">
-              semana cumplida
-            </Legend>
-            <Legend icon={<X size={13} strokeWidth={3} />} className="text-danger">
-              no llegó a la meta
+            <Legend
+              icon={<Flame size={13} strokeWidth={2.5} fill="currentColor" />}
+              className="text-accent"
+            >
+              uno por cada quien cumplió
             </Legend>
             <Legend icon={<span className="size-2.5 rounded-[3px] bg-success" />} className="text-text-faint">
-              día con entreno
+              alguien entrenó
             </Legend>
           </div>
-
-          <LastWorkoutCard userId={userId} onOpen={setOpenId} />
         </>
       )}
 
-      <CheckInSheet checkInId={openId} onClose={() => setOpenId(null)} />
+      <DaySheet groupId={groupId} day={openDay} onClose={() => setOpenDay(null)} />
     </div>
   )
 }
@@ -138,19 +127,20 @@ function DayCell({
   day,
   inMonth,
   isToday,
+  count,
   hasPhoto,
   onOpen,
 }: {
   day: string
   inMonth: boolean
   isToday: boolean
+  count: number
   hasPhoto: boolean
   onOpen?: () => void
 }) {
   const number = Number(day.slice(8))
   const base = 'relative aspect-square grid place-items-center rounded-[var(--radius-xs)] text-label font-bold'
 
-  // Sin check-in no hay nada que abrir: se dibuja como texto, no como botón.
   if (!onOpen) {
     return (
       <span
@@ -170,7 +160,7 @@ function DayCell({
       type="button"
       whileTap={{ scale: 0.9 }}
       onClick={onOpen}
-      aria-label={`Ver el entrenamiento del ${number}`}
+      aria-label={`Ver los entrenos del ${number}${count > 1 ? `: ${count} personas` : ''}`}
       className={cn(
         base,
         'cursor-pointer bg-success text-ink-1000 shadow-[0_4px_12px_-6px_var(--color-success)]',
@@ -179,42 +169,38 @@ function DayCell({
       )}
     >
       {number}
-      {hasPhoto && <span className="absolute bottom-1 size-1 rounded-full bg-ink-1000/60" />}
+      {count > 1 && (
+        <span className="absolute bottom-0.5 num text-micro leading-none text-ink-1000/75">{count}</span>
+      )}
+      {hasPhoto && count <= 1 && <span className="absolute bottom-1 size-1 rounded-full bg-ink-1000/60" />}
     </motion.button>
   )
 }
 
-function WeekCell({ status, count, goal }: { status: WeekStatus; count: number; goal: number }) {
-  if (status === 'future') return <span className="aspect-square" />
-
-  if (status === 'met') {
-    return (
-      <span
-        className="aspect-square grid place-items-center rounded-[var(--radius-xs)] bg-accent-tint border border-accent-line text-accent"
-        title={`${count} de ${goal}`}
-      >
-        <Flame size={16} strokeWidth={2.5} fill="currentColor" />
-      </span>
-    )
-  }
-
-  if (status === 'current') {
-    return (
-      <span
-        className="aspect-square grid place-items-center rounded-[var(--radius-xs)] border border-ink-700 text-text-faint tape"
-        title={`Semana en curso: ${count} de ${goal}`}
-      >
-        {count}/{goal}
-      </span>
-    )
+function WeekCell({
+  status,
+  metCount,
+  memberCount,
+}: {
+  status: GroupWeekStatus
+  metCount: number
+  memberCount: number
+}) {
+  if (status === 'future' || metCount === 0) {
+    return <span className="min-h-0" />
   }
 
   return (
     <span
-      className="aspect-square grid place-items-center rounded-[var(--radius-xs)] hatch border border-danger/40 text-danger"
-      title={`${count} de ${goal}`}
+      className="grid place-items-center self-stretch min-h-0"
+      title={`${metCount} de ${memberCount} cumplieron`}
+      aria-label={`${metCount} de ${memberCount} cumplieron la meta`}
     >
-      <X size={15} strokeWidth={3} />
+      <span className={cn('grid gap-px', metCount <= 3 ? 'grid-cols-1' : 'grid-cols-2')}>
+        {Array.from({ length: metCount }, (_, index) => (
+          <Flame key={index} size={11} strokeWidth={2.5} fill="currentColor" className="text-accent" />
+        ))}
+      </span>
     </span>
   )
 }
@@ -261,56 +247,67 @@ function Legend({
 }
 
 /**
- * Último entrenamiento del miembro elegido. Queda fija debajo del calendario
- * sin importar qué día se esté mirando, y usa el endpoint rápido de la fase
- * anterior (`/checkins/latest`).
+ * Feed de un día: lo que subió cada quien. Misma tarjeta que el feed del
+ * grupo, para que abrir el calendario no se sienta como otra app.
  */
-function LastWorkoutCard({ userId, onOpen }: { userId: string; onOpen: (id: string) => void }) {
-  const [checkIn, setCheckIn] = useState<CheckIn | null>(null)
-  const [loading, setLoading] = useState(true)
+function DaySheet({ groupId, day, onClose }: { groupId: string; day: string | null; onClose: () => void }) {
+  const navigate = useNavigate()
+  const [items, setItems] = useState<FeedItem[]>([])
+  const [loading, setLoading] = useState(false)
+  const [openId, setOpenId] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!day) {
+      setItems([])
+      setOpenId(null)
+      return
+    }
     setLoading(true)
+    const query = new URLSearchParams({ day, today: localDay(), limit: '50' })
     api
-      .get<{ checkIn: CheckIn | null }>(`/checkins/latest?userId=${encodeURIComponent(userId)}`)
-      .then(({ checkIn: latest }) => setCheckIn(latest))
-      .catch(() => setCheckIn(null))
+      .get<FeedPage>(`/groups/${groupId}/feed?${query}`)
+      .then((page) => setItems(page.items))
+      .catch(() => setItems([]))
       .finally(() => setLoading(false))
-  }, [userId])
+  }, [groupId, day])
 
   return (
-    <section className="flex flex-col gap-2">
-      <CardLabel className="mb-0">Último entrenamiento</CardLabel>
-
-      {loading ? (
-        <Card className="h-20 grid place-items-center">
-          <Loader2 size={20} strokeWidth={2.5} className="animate-spin text-ink-500" />
-        </Card>
-      ) : !checkIn ? (
-        <Card tone="outline">
-          <p className="text-caption text-text-muted">Todavía no marcó ningún entrenamiento.</p>
-        </Card>
-      ) : (
-        <button type="button" onClick={() => onOpen(checkIn.id)} className="pressable text-left cursor-pointer">
-          <Card tone="accent" notch className="flex items-center gap-3 !p-3.5">
-            <DayMark state="done" size="lg" />
-            <span className="flex-1 min-w-0">
-              <span className="block font-bold leading-tight">{relativeTime(checkIn.createdAt)}</span>
-              <span className="block text-caption text-text-muted truncate">
-                {checkIn.note ?? 'Marcó que entrenó, sin descripción.'}
-              </span>
-            </span>
-            {checkIn.photoUrl && (
-              <img
-                src={thumbnail(checkIn.photoUrl, 120)}
-                alt=""
-                className="size-14 rounded-[var(--radius-md)] object-cover border border-accent-line shrink-0"
+    <>
+      <Sheet open={day !== null} onClose={onClose} title={day ? <span className="text-title">{dayLabel(day)}</span> : undefined}>
+        {loading ? (
+          <div className="grid place-items-center py-16">
+            <Loader2 size={24} strokeWidth={2.5} className="animate-spin text-accent" />
+          </div>
+        ) : items.length === 0 ? (
+          <p className="text-caption text-text-muted py-8 text-center">Nadie marcó este día.</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {items.map((item, index) => (
+              <FeedCard
+                key={item.id}
+                item={item}
+                index={index}
+                onOpen={() => setOpenId(item.id)}
+                onAuthor={(userId) => {
+                  onClose()
+                  navigate(`/u/${userId}`)
+                }}
               />
-            )}
-          </Card>
-        </button>
-      )}
-    </section>
+            ))}
+          </div>
+        )}
+      </Sheet>
+
+      <CheckInSheet
+        checkInId={openId}
+        onClose={() => setOpenId(null)}
+        onCommented={() =>
+          setItems((current) =>
+            current.map((item) => (item.id === openId ? { ...item, commentCount: item.commentCount + 1 } : item)),
+          )
+        }
+      />
+    </>
   )
 }
 
@@ -327,6 +324,18 @@ function monthLabel(month: string): string {
   const label = new Date(Date.UTC(year!, monthNumber! - 1, 1)).toLocaleDateString('es', {
     month: 'long',
     year: 'numeric',
+    timeZone: 'UTC',
+  })
+  return label.charAt(0).toUpperCase() + label.slice(1)
+}
+
+function dayLabel(day: string): string {
+  if (day === localDay()) return 'Hoy'
+  const [year, month, date] = day.split('-').map(Number)
+  const label = new Date(Date.UTC(year!, month! - 1, date)).toLocaleDateString('es', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
     timeZone: 'UTC',
   })
   return label.charAt(0).toUpperCase() + label.slice(1)

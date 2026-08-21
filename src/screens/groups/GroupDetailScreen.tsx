@@ -11,8 +11,8 @@ type Mode = 'feed' | 'calendar'
 
 /**
  * Vista completa del grupo: dos modos que se alternan arriba de todo.
- * Feed para enterarse de lo que hicieron los demás, calendario para auditar
- * a alguien en particular.
+ * Feed para enterarse de lo que hicieron los demás, calendario del grupo
+ * para ver el mes de un vistazo.
  *
  * Los datos del grupo (código, tu meta, miembros) viven en un panel plegado:
  * se consultan de vez en cuando, no compiten con el contenido.
@@ -167,11 +167,12 @@ export function GroupDetailScreen() {
                   <div className="flex flex-col gap-2">
                     <CardLabel className="mb-0">Miembros ({group.memberCount})</CardLabel>
                     {group.members.map((member) => (
-                      <div
+                      <Link
                         key={member.id}
+                        to={`/u/${member.id}`}
                         className={cn(
-                          'flex items-center gap-3 px-3.5 py-2.5 rounded-[var(--radius-md)] border',
-                          member.isMe ? 'bg-ink-850 border-accent-line' : 'bg-surface border-line-soft',
+                          'pressable flex items-center gap-3 px-3.5 py-2.5 rounded-[var(--radius-md)] border',
+                          member.isMe ? 'bg-ink-850 border-accent-line' : 'bg-surface border-line-soft hover:border-ink-600',
                         )}
                       >
                         <Avatar name={member.name} image={member.image} size={36} />
@@ -188,7 +189,7 @@ export function GroupDetailScreen() {
                             {member.personalGoal === null ? 'del grupo' : 'propia'}
                           </span>
                         </span>
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 </div>
@@ -228,7 +229,7 @@ export function GroupDetailScreen() {
           {mode === 'feed' ? (
             <GroupFeed groupId={group.id} />
           ) : (
-            <GroupCalendar groupId={group.id} members={group.members} />
+            <GroupCalendar groupId={group.id} />
           )}
         </div>
       </div>

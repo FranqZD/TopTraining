@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { AnimatePresence, motion } from 'motion/react'
 import { ArrowLeft, Clock, X } from 'lucide-react'
 import { Avatar, Button, Card, CardLabel, StreakLabel } from '../components/ui'
@@ -108,17 +108,17 @@ export function FriendsScreen() {
             </Card>
           ) : (
             friends.map((friend) => (
-              <div
+              <Link
                 key={friend.id}
-                className="flex items-center gap-3 px-3.5 py-3 rounded-[var(--radius-md)] bg-surface border border-line-soft"
+                to={`/u/${friend.id}`}
+                className="pressable flex items-center gap-3 px-3.5 py-3 rounded-[var(--radius-md)] bg-surface border border-line-soft hover:border-ink-600"
               >
                 <Avatar name={friend.name} image={friend.image} size={44} />
                 <span className="flex-1 min-w-0">
                   <span className="block font-bold truncate leading-tight">{friend.name}</span>
-                  {/* Vista de vistazo: solo la racha, sin fotos ni barras. */}
                   <StreakLabel streaks={friend.streaks} className="mt-1" />
                 </span>
-              </div>
+              </Link>
             ))
           )}
         </section>

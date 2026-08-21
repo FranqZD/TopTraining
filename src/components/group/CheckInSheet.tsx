@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate, useLocation } from 'react-router'
 import { Loader2, Pencil, Send } from 'lucide-react'
 import { Avatar, Button, Card, CardLabel, DayMark, Sheet } from '../ui'
 import { api, relativeTime, type CheckInDetail } from '../../lib/api'
@@ -22,6 +22,7 @@ export function CheckInSheet({
   onCommented?: () => void
 }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const { profile } = useProfile()
   const [detail, setDetail] = useState<CheckInDetail | null>(null)
   const [body, setBody] = useState('')
@@ -61,7 +62,8 @@ export function CheckInSheet({
       open={checkInId !== null}
       onClose={onClose}
       title={
-        detail && (
+        detail &&
+        (location.pathname === `/u/${detail.user.id}` ? (
           <span className="flex items-center gap-2.5">
             <Avatar name={detail.user.name} image={detail.user.image} size={36} />
             <span className="min-w-0">
@@ -69,7 +71,23 @@ export function CheckInSheet({
               <span className="block tape text-text-faint">{relativeTime(detail.createdAt)}</span>
             </span>
           </span>
-        )
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              onClose()
+              navigate(`/u/${detail.user.id}`)
+            }}
+            aria-label={`Ver entrenos de ${detail.user.name}`}
+            className="pressable flex items-center gap-2.5 min-w-0 text-left cursor-pointer rounded-[var(--radius-sm)]"
+          >
+            <Avatar name={detail.user.name} image={detail.user.image} size={36} />
+            <span className="min-w-0">
+              <span className="block font-bold truncate leading-tight">{detail.user.name}</span>
+              <span className="block tape text-text-faint">{relativeTime(detail.createdAt)}</span>
+            </span>
+          </button>
+        ))
       }
     >
       {!detail ? (

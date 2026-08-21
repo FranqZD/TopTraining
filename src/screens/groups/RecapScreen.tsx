@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import { motion } from 'motion/react'
 import { ArrowLeft, ChevronLeft, ChevronRight, Crown, Flame, Loader2, Turtle } from 'lucide-react'
 import { Avatar, Button, Card, CardLabel, cn } from '../../components/ui'
@@ -157,28 +157,32 @@ export function RecapScreen() {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.24, delay: Math.min(index, 8) * 0.04 }}
-                  className="flex items-center gap-3 px-3.5 py-3 rounded-[var(--radius-md)] bg-surface border border-line-soft"
                 >
-                  <span className="num text-label text-ink-500 w-4 shrink-0">{index + 1}</span>
-                  <Avatar name={member.name} image={member.image} size={40} />
-                  <span className="flex-1 min-w-0">
-                    <span className="block font-bold truncate leading-tight">{member.name}</span>
-                    <span className="block tape text-text-faint">
-                      meta {member.goal}× · <span className="num">{member.checkIns}</span> entrenos
-                      {member.longestStreak > 1 && (
-                        <>
-                          {' · '}
-                          <span className="num">{member.longestStreak}</span> seguidos
-                        </>
-                      )}
+                  <Link
+                    to={`/u/${member.id}`}
+                    className="pressable flex items-center gap-3 px-3.5 py-3 rounded-[var(--radius-md)] bg-surface border border-line-soft hover:border-ink-600"
+                  >
+                    <span className="num text-label text-ink-500 w-4 shrink-0">{index + 1}</span>
+                    <Avatar name={member.name} image={member.image} size={40} />
+                    <span className="flex-1 min-w-0">
+                      <span className="block font-bold truncate leading-tight">{member.name}</span>
+                      <span className="block tape text-text-faint">
+                        meta {member.goal}× · <span className="num">{member.checkIns}</span> entrenos
+                        {member.longestStreak > 1 && (
+                          <>
+                            {' · '}
+                            <span className="num">{member.longestStreak}</span> seguidos
+                          </>
+                        )}
+                      </span>
                     </span>
-                  </span>
-                  <span className="text-right shrink-0">
-                    <span className="num text-title text-ink-100">
-                      {member.weeksMet}/{member.weeksEvaluated}
+                    <span className="text-right shrink-0">
+                      <span className="num text-title text-ink-100">
+                        {member.weeksMet}/{member.weeksEvaluated}
+                      </span>
+                      <span className="block tape text-text-faint">semanas</span>
                     </span>
-                    <span className="block tape text-text-faint">semanas</span>
-                  </span>
+                  </Link>
                 </motion.div>
               ))}
             </section>
@@ -210,6 +214,7 @@ function Highlight({
 }) {
   const best = tone === 'best'
   return (
+    <Link to={`/u/${member.id}`} className="pressable block">
     <Card
       notch={best}
       className={cn(
@@ -234,6 +239,7 @@ function Highlight({
         </span>
       </div>
     </Card>
+    </Link>
   )
 }
 

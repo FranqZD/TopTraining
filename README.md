@@ -56,8 +56,9 @@ de uso. Es una app de uso diario: nadie debería volver a ver el login.
 | `GET` | `/api/checkins` | tus últimos 60 días |
 | `GET` | `/api/checkins/:id` | detalle con comentarios (miembros del mismo grupo) |
 | `POST` | `/api/checkins/:id/comments` | comentar el entrenamiento de otro |
-| `GET` | `/api/groups/:id/feed` | feed paginado por cursor (`?cursor=&limit=`) |
-| `GET` | `/api/groups/:id/calendar` | grilla mensual de un miembro (`?userId=&month=`) |
+| `GET` | `/api/users/:id/feed` | entrenos de una persona (vos, amigo o mismo grupo) |
+| `GET` | `/api/groups/:id/feed` | feed paginado por cursor (`?cursor=&limit=`; `?day=` para un día) |
+| `GET` | `/api/groups/:id/calendar` | grilla mensual del grupo (`?month=`) |
 | `POST` | `/api/push/subscribe` · `/unsubscribe` | registrar o dar de baja un dispositivo |
 | `GET` | `/api/push/status` | dispositivos y si ya se avisó hoy |
 | `POST` | `/api/push/test` | aviso de prueba a uno mismo |
@@ -91,6 +92,7 @@ server/
 | `/checkin` | marcar el entrenamiento del día |
 | `/groups/:id` | grupo, con toggle Feed / Calendario |
 | `/groups/:id/recap` | recap mensual, navegable entre meses |
+| `/u/:userId` | feed de una persona (sus entrenos) |
 | `/friends` | solicitudes, lista de amigos y alta por código o búsqueda |
 | `/groups/new` · `/groups/join` · `/groups/:id` | crear, unirse, detalle |
 | `/settings` | ajustes y paleta |
@@ -244,13 +246,13 @@ horario de verano. Tienen tests: `npm --prefix server run test:streaks`.
   La semana en curso solo suma si ya la cumpliste; si te falta, no rompe nada,
   porque la semana no terminó.
 
-En el calendario, cada semana tiene un estado explícito — `met`, `missed`,
-`current` o `future` — para no clavarle una equis a una semana que todavía
-está corriendo.
+En el calendario del grupo, la octava columna cuenta **personas** que
+cumplieron su meta esa semana — una llama por cada una. La semana en curso
+no se marca como fracaso si todavía falta gente: solo se ven las llamas de
+quienes ya llegaron.
 
-La meta que se usa depende del contexto: en la lista de amigos es la
-`weeklyFrequency` del perfil; en el calendario de un grupo es la meta efectiva
-de ese miembro en ese grupo (`personalGoal ?? baseGoal`).
+La meta de cada uno es `personalGoal ?? baseGoal`. En la lista de amigos se
+usa la `weeklyFrequency` del perfil.
 
 ## Modelo de amistad
 

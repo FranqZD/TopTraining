@@ -13,6 +13,7 @@ import { CreateGroupScreen } from './screens/groups/CreateGroupScreen'
 import { JoinGroupScreen } from './screens/groups/JoinGroupScreen'
 import { GroupDetailScreen } from './screens/groups/GroupDetailScreen'
 import { RecapScreen } from './screens/groups/RecapScreen'
+import { PersonFeedScreen } from './screens/PersonFeedScreen'
 import { DesignSystemScreen } from './showcase/DesignSystemScreen'
 
 /**
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="/groups/join" element={<RequireAuth><JoinGroupScreen /></RequireAuth>} />
         <Route path="/groups/:id" element={<RequireAuth><GroupDetailScreen /></RequireAuth>} />
         <Route path="/groups/:id/recap" element={<RequireAuth><RecapScreen /></RequireAuth>} />
+        <Route path="/u/:userId" element={<RequireAuth><PersonFeedScreen /></RequireAuth>} />
         <Route path="/" element={<RequireAuth><HomeScreen /></RequireAuth>} />
         {/* Muestrario del sistema de diseño (Fase 1). */}
         <Route path="/design" element={<DesignSystemScreen />} />

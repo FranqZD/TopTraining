@@ -143,32 +143,35 @@ export interface FeedPage {
   nextCursor: string | null
 }
 
-export type WeekStatus = 'met' | 'missed' | 'current' | 'future'
+export interface PersonFeedPage extends FeedPage {
+  user: Friend
+  streaks: Streaks
+}
 
-export interface WeekSummary {
+export type GroupWeekStatus = 'past' | 'current' | 'future'
+
+export interface GroupWeekSummary {
   start: string
-  count: number
-  goal: number
-  met: boolean
-  status: WeekStatus
+  status: GroupWeekStatus
+  /** Cuánta gente cumplió su meta esa semana. */
+  metCount: number
+  memberCount: number
 }
 
-export interface CalendarCheckIn {
-  id: string
+export interface CalendarDay {
   day: string
-  note: string | null
-  photoUrl: string | null
+  /** Cuánta gente marcó ese día. */
+  count: number
+  hasPhoto: boolean
 }
 
-export interface CalendarData {
+export interface GroupCalendarData {
   month: string
-  userId: string
-  goal: number
-  usesPersonalGoal: boolean
+  memberCount: number
   gridStart: string
   gridEnd: string
-  checkIns: CalendarCheckIn[]
-  weeks: WeekSummary[]
+  days: CalendarDay[]
+  weeks: GroupWeekSummary[]
 }
 
 export interface RecapMember {

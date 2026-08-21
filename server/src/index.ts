@@ -7,7 +7,7 @@ import { auth, enabledProviders, isTrustedOrigin } from './auth.js'
 import { prisma } from './db.js'
 import { generateGroupCode } from './codes.js'
 import { deletePhoto, imageTransformBase, isOwnPhotoUrl, putCheckInPhoto, storageConfigured } from './storage.js'
-import { computeStreaks, shiftDay, summarizeWeeks, weekStart } from './streaks.js'
+import { computeStreaks, shiftDay, weekDays, weekStart } from './streaks.js'
 import { pushConfigured, sendToUser, vapidPublicKey } from './push.js'
 import { runNudgeSweep, startScheduler } from './scheduler.js'
 import { generateClosedRecaps, getRecap } from './recap.js'
@@ -267,6 +267,23 @@ async function sharesGroup(userA: string, userB: string): Promise<boolean> {
   return Boolean(shared)
 }
 
+/** Vos, un amigo aceptado, o alguien con quien compartís grupo. */
+async function canViewUserCheckIns(viewerId: string, targetId: string): Promise<boolean> {
+  if (viewerId === targetId) return true
+  const link = await prisma.friendship.findFirst({
+    where: {
+      status: 'accepted',
+      OR: [
+        { requesterId: viewerId, addresseeId: targetId },
+        { requesterId: targetId, addresseeId: viewerId },
+      ],
+    },
+    select: { id: true },
+  })
+  if (link) return true
+  return sharesGroup(viewerId, targetId)
+}
+
 /* ---------------------------------------------------------------------------
    Amigos — con solicitud: pending -> accepted
    ------------------------------------------------------------------------- */
@@ -459,6 +476,74 @@ app.get('/api/users/search', requireAuth, async (req, res) => {
   )
 })
 
+/**
+ * Feed de una persona: todos sus entrenos, del más nuevo al más viejo.
+ * Lo puede ver ella misma, un amigo aceptado, o alguien con quien comparte grupo.
+ */
+app.get('/api/users/:id/feed', requireAuth, async (req, res) => {
+  const targetId = String(req.params.id)
+  if (!(await canViewUserCheckIns(req.userId!, targetId))) {
+    res.status(403).json({ error: 'No puedes ver esos entrenos' })
+    return
+  }
+
+  const profile = await prisma.user.findUnique({
+    where: { id: targetId },
+    select: { ...FRIEND_SELECT, weeklyFrequency: true },
+  })
+  if (!profile) {
+    res.status(404).json({ error: 'Esa persona no existe' })
+    return
+  }
+
+  const limit = Math.min(Math.max(Number(req.query.limit ?? 25) || 25, 1), 30)
+  const cursor = req.query.cursor ? String(req.query.cursor) : undefined
+  const today = todayFor(req)
+
+  const rows = await prisma.checkIn.findMany({
+    where: { userId: targetId },
+    orderBy: [{ day: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+    take: limit + 1,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    include: { user: { select: FRIEND_SELECT }, _count: { select: { comments: true } } },
+  })
+
+  const hasMore = rows.length > limit
+  const page = hasMore ? rows.slice(0, limit) : rows
+
+  const history = await prisma.checkIn.findMany({
+    where: { userId: targetId, day: { gte: shiftDay(today, -STREAK_WINDOW_DAYS) } },
+    select: { day: true },
+  })
+  const streaks = computeStreaks(
+    history.map((row) => row.day),
+    profile.weeklyFrequency ?? 0,
+    today,
+  )
+  const user = {
+    id: profile.id,
+    name: profile.name,
+    image: profile.image,
+    friendCode: profile.friendCode,
+  }
+
+  res.json({
+    user,
+    streaks,
+    items: page.map((row) => ({
+      id: row.id,
+      day: row.day,
+      note: row.note,
+      photoUrl: row.photoUrl,
+      createdAt: row.createdAt,
+      commentCount: row._count.comments,
+      author: row.user,
+      streaks,
+    })),
+    nextCursor: hasMore ? page[page.length - 1]!.id : null,
+  })
+})
+
 /* ---------------------------------------------------------------------------
    Grupos
    ------------------------------------------------------------------------- */
@@ -619,14 +704,20 @@ app.get('/api/groups/:id/feed', requireAuth, async (req, res) => {
     return
   }
 
-  const limit = Math.min(Math.max(Number(req.query.limit ?? 25) || 25, 1), 30)
+  const day = req.query.day ? String(req.query.day) : undefined
+  if (day && !/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    res.status(400).json({ error: 'Día inválido' })
+    return
+  }
+
+  const limit = Math.min(Math.max(Number(req.query.limit ?? 25) || 25, 1), day ? 50 : 30)
   const cursor = req.query.cursor ? String(req.query.cursor) : undefined
 
   const members = await prisma.groupMember.findMany({ where: { groupId }, select: { userId: true } })
   const memberIds = members.map((member) => member.userId)
 
   const rows = await prisma.checkIn.findMany({
-    where: { userId: { in: memberIds } },
+    where: { userId: { in: memberIds }, ...(day ? { day } : {}) },
     // Ordena por el día ENTRENADO, no por cuándo se creó la fila: si alguien
     // marca hoy un rato tarde tiene que aparecer arriba igual.
     orderBy: [{ day: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
@@ -667,22 +758,16 @@ app.get('/api/groups/:id/feed', requireAuth, async (req, res) => {
 })
 
 /**
- * Calendario mensual de un miembro. Devuelve la grilla ya resuelta por el
- * servidor: qué días tienen check-in y, por cada semana, si llegó a la meta
- * (la personal del miembro en este grupo, o la base del grupo si no tiene).
- *
- * Las semanas se calculan sobre la grilla completa (lunes a domingo), que
- * empieza antes y termina después del mes: si no, una semana partida entre
- * dos meses daría "no cumplió" por contar solo la mitad de sus días.
+ * Calendario mensual del grupo. Un día cuenta si entrenó cualquiera; la
+ * octava columna es cuánta gente cumplió SU meta esa semana (una llama por
+ * cabeza). Las semanas se calculan sobre la grilla completa (lunes a domingo)
+ * para que una semana partida entre dos meses no se corte a la mitad.
  */
 app.get('/api/groups/:id/calendar', requireAuth, async (req, res) => {
   const groupId = String(req.params.id)
   const parsed = z
-    .object({
-      userId: z.string().min(1).optional(),
-      month: z.string().regex(/^\d{4}-\d{2}$/, 'Formato esperado YYYY-MM'),
-    })
-    .safeParse({ userId: req.query.userId, month: req.query.month })
+    .object({ month: z.string().regex(/^\d{4}-\d{2}$/, 'Formato esperado YYYY-MM') })
+    .safeParse({ month: req.query.month })
   if (!parsed.success) {
     res.status(400).json({ error: 'Mes inválido' })
     return
@@ -694,15 +779,14 @@ app.get('/api/groups/:id/calendar', requireAuth, async (req, res) => {
     return
   }
 
-  const targetId = parsed.data.userId ?? req.userId!
-  const target = await membershipOf(groupId, targetId)
-  if (!target) {
-    res.status(404).json({ error: 'Esa persona no es miembro del grupo' })
+  const [group, members] = await Promise.all([
+    prisma.group.findUnique({ where: { id: groupId }, select: { baseGoal: true } }),
+    prisma.groupMember.findMany({ where: { groupId }, select: { userId: true, personalGoal: true } }),
+  ])
+  if (!group) {
+    res.status(404).json({ error: 'Ese grupo no existe o no eres miembro' })
     return
   }
-
-  const group = await prisma.group.findUnique({ where: { id: groupId }, select: { baseGoal: true } })
-  const goal = target.personalGoal ?? group!.baseGoal
 
   const today = todayFor(req)
   const [year, month] = parsed.data.month.split('-').map(Number)
@@ -710,29 +794,47 @@ app.get('/api/groups/:id/calendar', requireAuth, async (req, res) => {
   const daysInMonth = new Date(Date.UTC(year!, month!, 0)).getUTCDate()
   const lastOfMonth = `${parsed.data.month}-${String(daysInMonth).padStart(2, '0')}`
 
-  // La grilla arranca el lunes de la semana del día 1 y termina el domingo de
-  // la semana del último día.
   const gridStart = weekStart(firstOfMonth)
   const gridEnd = shiftDay(weekStart(lastOfMonth), 6)
+  const memberIds = members.map((member) => member.userId)
 
   const checkIns = await prisma.checkIn.findMany({
-    where: { userId: targetId, day: { gte: gridStart, lte: gridEnd } },
-    select: { id: true, day: true, note: true, photoUrl: true },
-    orderBy: { day: 'asc' },
+    where: { userId: { in: memberIds }, day: { gte: gridStart, lte: gridEnd } },
+    select: { userId: true, day: true, photoUrl: true },
   })
 
+  const dayStats = new Map<string, { count: number; hasPhoto: boolean }>()
+  for (const row of checkIns) {
+    const current = dayStats.get(row.day) ?? { count: 0, hasPhoto: false }
+    current.count += 1
+    if (row.photoUrl) current.hasPhoto = true
+    dayStats.set(row.day, current)
+  }
+
+  const daysByUser = groupDaysByUser(checkIns)
+  const currentWeek = weekStart(today)
   const mondays: string[] = []
   for (let cursor = gridStart; cursor <= gridEnd; cursor = shiftDay(cursor, 7)) mondays.push(cursor)
 
+  const weeks = mondays.map((start) => {
+    let metCount = 0
+    for (const member of members) {
+      const goal = member.personalGoal ?? group.baseGoal
+      const days = new Set(daysByUser.get(member.userId) ?? [])
+      const count = weekDays(start).filter((day) => days.has(day)).length
+      if (goal > 0 && count >= goal) metCount += 1
+    }
+    const status = start > currentWeek ? 'future' : start === currentWeek ? 'current' : 'past'
+    return { start, status, metCount, memberCount: members.length }
+  })
+
   res.json({
     month: parsed.data.month,
-    userId: targetId,
-    goal,
-    usesPersonalGoal: target.personalGoal !== null,
+    memberCount: members.length,
     gridStart,
     gridEnd,
-    checkIns,
-    weeks: summarizeWeeks(new Set(checkIns.map((checkIn) => checkIn.day)), mondays, goal, today),
+    days: [...dayStats.entries()].map(([day, stats]) => ({ day, ...stats })),
+    weeks,
   })
 })
 
@@ -866,27 +968,15 @@ app.post('/api/checkins', requireAuth, async (req, res) => {
  * el índice único (userId, day): filtra por userId y toma el primero por día
  * descendente, sin recorrer la tabla.
  *
- * Sin `userId` devuelve el propio; con `userId` solo se permite mirar el de un
- * amigo aceptado.
+ * Sin `userId` devuelve el propio; con `userId` solo si podés ver sus entrenos
+ * (amigo, mismo grupo, o sos vos).
  */
 app.get('/api/checkins/latest', requireAuth, async (req, res) => {
   const requested = req.query.userId ? String(req.query.userId) : req.userId!
 
-  if (requested !== req.userId) {
-    const link = await prisma.friendship.findFirst({
-      where: {
-        status: 'accepted',
-        OR: [
-          { requesterId: req.userId, addresseeId: requested },
-          { requesterId: requested, addresseeId: req.userId },
-        ],
-      },
-      select: { id: true },
-    })
-    if (!link) {
-      res.status(403).json({ error: 'Solo puedes ver los check-ins de tus amigos' })
-      return
-    }
+  if (!(await canViewUserCheckIns(req.userId!, requested))) {
+    res.status(403).json({ error: 'No puedes ver esos check-ins' })
+    return
   }
 
   const checkIn = await prisma.checkIn.findFirst({

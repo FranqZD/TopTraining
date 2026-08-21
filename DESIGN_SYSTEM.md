@@ -256,9 +256,10 @@ Referencia de que el sistema aguanta pantallas reales:
   login y del onboarding. Los datos del grupo (código, tu meta, miembros) van
   en un panel plegado: se consultan de vez en cuando y no compiten con el
   contenido.
-- **Calendario:** un día sin check-in se dibuja como texto, no como botón —
-  si no hay nada que abrir, el dedo no debería creer que sí. La octava columna
-  reusa la llama del acento y la equis sobre trama diagonal de `DayMark`.
+- **Calendario:** es del grupo, no de una persona. Un día sin check-ins se
+  dibuja como texto, no como botón. La octava columna son llamas de acento:
+  una por cada miembro que cumplió su meta esa semana. Tocar un día abre el
+  feed de ese día.
 - **Recordatorios:** el permiso del navegador nunca se pide solo — siempre
   detrás de un botón, y en iOS recién después de que la app esté instalada.
   Las instrucciones de instalación usan `Card tone="accent"` con pasos
