@@ -58,7 +58,6 @@ export function VoteBar({
         onClick={() => void toggle('like')}
       >
         <Flame size={22} strokeWidth={2.5} fill={mine.has('like') ? 'currentColor' : 'none'} />
-        <span className="tape">Aura</span>
       </VoteCell>
 
       <VoteCell

@@ -67,7 +67,7 @@ export function FeedCard({
       transition={{ duration: 0.26, delay: Math.min(index, 6) * 0.03, ease: [0.16, 1, 0.3, 1] }}
     >
       <Card className="flex flex-col gap-3 !p-4">
-        <div className="flex items-start gap-3">
+        <div className="flex items-center gap-3">
           {onAuthor ? (
             <button
               type="button"
@@ -80,14 +80,11 @@ export function FeedCard({
           ) : (
             <header className="flex items-center gap-3 min-w-0 flex-1">{identity}</header>
           )}
-        </div>
 
-        <div className="flex items-end justify-between gap-3">
-          <div className="leading-none">
+          <div className="shrink-0 flex items-baseline gap-3 leading-none">
             <p className="num text-headline text-success">{aura}</p>
-            <p className="tape text-success mt-1">de aura</p>
+            <p className="num text-headline text-danger">{laura}</p>
           </div>
-          <p className="num text-headline text-danger leading-none">{laura}</p>
         </div>
 
         <div
