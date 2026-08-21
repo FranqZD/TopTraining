@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 200" width="900" height="200">
+<circle cx="100" cy="100" r="90" fill="#ec3013"></circle>
+<g transform="translate(48 48) scale(2)"><rect x="2" y="8" width="48" height="7" fill="#fff"></rect><rect x="7" y="21" width="38" height="6" fill="#fff"></rect><rect x="13" y="15" width="7" height="31" fill="#fff"></rect><rect x="32" y="15" width="7" height="31" fill="#fff"></rect></g>
+<text x="230" y="128" font-family="Archivo, Arial Black, sans-serif" font-weight="900" font-size="96" letter-spacing="-4" fill="#201e1d">TOP<tspan fill="#ec3013">TRAINING</tspan></text>
+</svg>

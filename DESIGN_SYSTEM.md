@@ -264,9 +264,9 @@ Referencia de que el sistema aguanta pantallas reales:
   Las instrucciones de instalación usan `Card tone="accent"` con pasos
   numerados, porque es lo único que se puede hacer cuando el sistema no ofrece
   ninguna API para instalar.
-- **Ícono de la app:** la misma marca que el resto — fondo coral a sangre, "T"
-  casi negra y la esquina cortada en diagonal. Se genera por código
-  (`scripts/generate-icons.mjs`) desde los mismos hex de la paleta ember.
+- **Ícono de la app:** disco rojo (`#EC3013`) con la marca blanca sobre
+  carbón (`#201E1D`). Fuente: `public/icon-app-black.svg` y los PNG del
+  mismo nombre (`icon-180`, `icon-192`, `icon-512`, …).
 - **Recap:** el número grande manda (`.num` en `text-stat-xl`), la barra de
   cumplimiento cambia de color por tramos (success / warning / danger) y el
   veredicto en texto acompaña al número. La tarjeta del "más huevón" usa
@@ -281,5 +281,5 @@ Referencia de que el sistema aguanta pantallas reales:
 - Fuente servida desde Google Fonts. Antes de la PWA offline conviene
   auto-hospedarla (`@fontsource-variable/archivo`) para no depender de la red.
 - Falta el manifest + service worker de la PWA (fase de infraestructura).
-- Falta definir el wordmark/logo como pieza gráfica; hoy el logotipo es
-  tipográfico (Archivo Expanded 120, caja alta).
+- El wordmark está en `public/lockup-horizontal.svg`; todavía no se usa
+  en ninguna pantalla (el login sigue siendo tipográfico).

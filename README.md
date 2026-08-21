@@ -227,7 +227,7 @@ siempre detrás de un botón.
 
 `public/manifest.webmanifest` + `public/sw.js` (el service worker se sirve
 desde la raíz a propósito: solo controla su directorio hacia abajo). Los
-íconos se generan sin dependencias con `node scripts/generate-icons.mjs`.
+íconos en `public/` (`icon-app-black.svg` y los PNG `icon-32` … `icon-1024`).
 
 ## Rachas
 
