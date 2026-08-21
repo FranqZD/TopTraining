@@ -50,7 +50,11 @@ async function main() {
       ownerId: people[0]!.id,
       createdAt: new Date('2026-06-01T00:00:00Z'),
       members: {
-        create: people.map((person) => ({ userId: person.id, personalGoal: person.goal })),
+        create: people.map((person, index) => ({
+          userId: person.id,
+          personalGoal: person.goal,
+          joinedAt: new Date(`2026-06-0${index + 1}T12:00:00Z`),
+        })),
       },
     },
   })
@@ -92,6 +96,9 @@ async function main() {
   console.log('\ndestacados')
   check('el mejor es Ana', recap.best?.name, 'Ana')
   check('el más huevón es Beto', recap.worst?.name, 'Beto')
+  check('Ana es REY', by('Ana').title, 'rey')
+  check('Beto es HUEVÓN (racha recién rota)', by('Beto').title, 'huevon')
+  check('Caro es POLLITO (la más nueva)', by('Caro').title, 'pollito')
   check('cumplimiento del grupo: 6 de 12 semanas-persona', recap.completion, 0.5)
   check('nadie fue perfecto en grupo', recap.everyoneDelivered, false)
 
@@ -125,6 +132,9 @@ async function main() {
   check('si cumplieron todos, nadie es el huevón', flawless.worst, null)
   check('y el grupo queda en 100%', flawless.completion, 1)
   check('everyoneDelivered en true', flawless.everyoneDelivered, true)
+  check('Beto es REY (más racha y entrenos)', flawless.members.find((member) => member.name === 'Beto')!.title, 'rey')
+  check('Ana es ENRACHADA (2+ semanas)', flawless.members.find((member) => member.name === 'Ana')!.title, 'enrachado')
+  check('Caro es ENRACHADA (gana a pollito)', flawless.members.find((member) => member.name === 'Caro')!.title, 'enrachado')
 }
 
 main()

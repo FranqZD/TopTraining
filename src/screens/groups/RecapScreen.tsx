@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { motion } from 'motion/react'
-import { ArrowLeft, ChevronLeft, ChevronRight, Crown, Flame, Loader2, Turtle } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Crown, Egg, Flame, Loader2, Turtle } from 'lucide-react'
 import { Avatar, Button, Card, CardLabel, cn } from '../../components/ui'
-import { api, localMonth, type Recap, type RecapMember } from '../../lib/api'
+import { api, localMonth, type Recap, type RecapMember, type RecapTitle } from '../../lib/api'
 
 /**
  * Recap mensual del grupo.
@@ -165,7 +165,10 @@ export function RecapScreen() {
                     <span className="num text-label text-ink-500 w-4 shrink-0">{index + 1}</span>
                     <Avatar name={member.name} image={member.image} size={40} />
                     <span className="flex-1 min-w-0">
-                      <span className="block font-bold truncate leading-tight">{member.name}</span>
+                      <span className="flex items-center gap-2 min-w-0">
+                        <span className="font-bold truncate leading-tight">{member.name}</span>
+                        {member.title && <TitleBadge title={member.title} />}
+                      </span>
                       <span className="block tape text-text-faint">
                         meta {member.goal}× · <span className="num">{member.checkIns}</span> entrenos
                         {member.longestStreak > 1 && (
@@ -199,6 +202,35 @@ export function RecapScreen() {
 
 /* --- Piezas -------------------------------------------------------------- */
 
+const TITLE_LABEL: Record<RecapTitle, string> = {
+  rey: 'Rey',
+  enrachado: 'Enrachado',
+  huevon: 'Huevón',
+  pollito: 'Pollito',
+}
+
+const TITLE_TONE: Record<RecapTitle, string> = {
+  rey: 'bg-accent-tint border-accent-line text-accent',
+  enrachado: 'bg-success-tint border-success/40 text-success',
+  huevon: 'bg-danger-tint border-danger/40 text-danger',
+  pollito: 'bg-warning-tint border-warning/40 text-warning',
+}
+
+function TitleBadge({ title }: { title: RecapTitle }) {
+  const Icon = title === 'rey' ? Crown : title === 'enrachado' ? Flame : title === 'huevon' ? Turtle : Egg
+  return (
+    <span
+      className={cn(
+        'tape inline-flex items-center gap-1 h-5 pl-1.5 pr-2 rounded-[var(--radius-pill)] border shrink-0',
+        TITLE_TONE[title],
+      )}
+    >
+      <Icon size={10} strokeWidth={2.5} />
+      {TITLE_LABEL[title]}
+    </span>
+  )
+}
+
 function Highlight({
   label,
   icon,
@@ -229,7 +261,10 @@ function Highlight({
       <div className="flex items-center gap-3.5">
         <Avatar name={member.name} image={member.image} size={52} />
         <div className="min-w-0">
-          <p className="text-title truncate leading-tight">{member.name}</p>
+          <p className="flex items-center gap-2 min-w-0">
+            <span className="text-title truncate leading-tight">{member.name}</span>
+            {member.title && <TitleBadge title={member.title} />}
+          </p>
           <p className="text-caption text-text-muted">{line}</p>
         </div>
         <span className="ml-auto text-right shrink-0">

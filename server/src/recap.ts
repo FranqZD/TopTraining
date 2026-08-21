@@ -1,5 +1,5 @@
 import { prisma } from './db.js'
-import { longestStreak, monthEnd, monthWeeks, summarizeWeeks, weekDays } from './streaks.js'
+import { dailyStreak, longestStreak, monthEnd, monthWeeks, shiftDay, summarizeWeeks, weekDays, weeklyStreak } from './streaks.js'
 
 /**
  * Recap mensual de un grupo.
@@ -12,6 +12,9 @@ import { longestStreak, monthEnd, monthWeeks, summarizeWeeks, weekDays } from '.
  * Solo se evalúan las semanas TERMINADAS. La semana en curso no entra, igual
  * que en las rachas: todavía puede cumplirse.
  */
+
+/** Un título por persona. Si califica para varios, gana el de más peso. */
+export type RecapTitle = 'rey' | 'enrachado' | 'huevon' | 'pollito'
 
 export interface RecapMember {
   id: string
@@ -26,6 +29,8 @@ export interface RecapMember {
   longestStreak: number
   /** weeksMet / weeksEvaluated, 0..1. null si no hubo semanas que evaluar. */
   completion: number | null
+  /** Apodo del mes. null si no hay nada que decir. */
+  title: RecapTitle | null
 }
 
 export interface Recap {
@@ -64,15 +69,19 @@ export async function computeRecap(groupId: string, month: string, today: string
   const from = `${month}-01`
   const to = monthEnd(month)
   const partial = today <= to
+  /** Rachas vivas se miran al cierre del mes, no al día de hoy si el mes ya pasó. */
+  const asOf = today <= to ? today : to
 
   const mondays = monthWeeks(month)
+  const memberIds = group.members.map((member) => member.userId)
+  const lookback = shiftDay(from, -63)
 
   const checkIns = await prisma.checkIn.findMany({
     where: {
-      userId: { in: group.members.map((member) => member.userId) },
+      userId: { in: memberIds },
       // Traemos también los días de las semanas del mes que se van al mes
-      // siguiente, si no la última semana quedaría cortada.
-      day: { gte: from, lte: mondays.length ? maxDay(to, lastDayOfWeeks(mondays)) : to },
+      // siguiente, y un par de meses atrás para las rachas que cruzan el corte.
+      day: { gte: lookback, lte: mondays.length ? maxDay(to, lastDayOfWeeks(mondays)) : to },
     },
     select: { userId: true, day: true },
   })
@@ -84,7 +93,7 @@ export async function computeRecap(groupId: string, month: string, today: string
     daysByUser.set(checkIn.userId, set)
   }
 
-  const members: RecapMember[] = group.members.map((member) => {
+  const drafted = group.members.map((member) => {
     const days = daysByUser.get(member.userId) ?? new Set<string>()
     const goal = member.personalGoal ?? group.baseGoal
 
@@ -105,8 +114,13 @@ export async function computeRecap(groupId: string, month: string, today: string
       weeksMet: weeks.filter((week) => week.met).length,
       longestStreak: longestStreak(days, from, to),
       completion: weeks.length ? weeks.filter((week) => week.met).length / weeks.length : null,
+      joinedAt: member.joinedAt.getTime(),
+      weekly: weeklyStreak(days, goal, asOf),
+      recentlyBroken: recentlyBroken(days, asOf, weeks),
     }
   })
+
+  const members: RecapMember[] = assignTitles(drafted)
 
   const weeksEvaluated = members.reduce((total, member) => total + member.weeksEvaluated, 0)
   const weeksMet = members.reduce((total, member) => total + member.weeksMet, 0)
@@ -157,6 +171,84 @@ function lastDayOfWeeks(mondays: string[]): string {
 
 function maxDay(a: string, b: string): string {
   return a > b ? a : b
+}
+
+type DraftMember = Omit<RecapMember, 'title'> & {
+  joinedAt: number
+  weekly: number
+  recentlyBroken: boolean
+}
+
+/**
+ * Un título por cabeza, en este orden:
+ *   REY        — más semanas cumplidas, racha y entrenos (puede haber empate)
+ *   ENRACHADO  — dos semanas seguidas cumpliendo la meta
+ *   HUEVÓN     — se le acaba de romper la racha
+ *   POLLITO    — el más nuevo del grupo (solo si hay alguien más viejo)
+ */
+function assignTitles(drafted: DraftMember[]): RecapMember[] {
+  const titleOf = new Map<string, RecapTitle>()
+  const taken = new Set<string>()
+
+  const claim = (id: string, title: RecapTitle) => {
+    if (taken.has(id)) return
+    titleOf.set(id, title)
+    taken.add(id)
+  }
+
+  const active = drafted.filter((member) => member.checkIns > 0)
+  if (active.length > 0) {
+    const top = [...active].sort(
+      (a, b) =>
+        b.weeksMet - a.weeksMet || b.longestStreak - a.longestStreak || b.checkIns - a.checkIns,
+    )[0]!
+    for (const member of active) {
+      if (
+        member.weeksMet === top.weeksMet &&
+        member.longestStreak === top.longestStreak &&
+        member.checkIns === top.checkIns
+      ) {
+        claim(member.id, 'rey')
+      }
+    }
+  }
+
+  for (const member of drafted) {
+    if (member.weekly >= 2) claim(member.id, 'enrachado')
+  }
+
+  for (const member of drafted) {
+    if (member.recentlyBroken) claim(member.id, 'huevon')
+  }
+
+  const newest = Math.max(...drafted.map((member) => member.joinedAt))
+  const hasOlder = drafted.some((member) => member.joinedAt < newest)
+  if (hasOlder) {
+    for (const member of drafted) {
+      if (member.joinedAt === newest) claim(member.id, 'pollito')
+    }
+  }
+
+  return drafted.map(({ joinedAt: _joinedAt, weekly: _weekly, recentlyBroken: _broken, ...member }) => ({
+    ...member,
+    title: titleOf.get(member.id) ?? null,
+  }))
+}
+
+/** Se le rompió ahora: última semana evaluada fallida después de una cumplida,
+ *  o la racha diaria se cortó hace entre 2 y 7 días. */
+function recentlyBroken(
+  days: Set<string>,
+  asOf: string,
+  weeks: { met: boolean }[],
+): boolean {
+  if (weeks.length >= 2 && !weeks[weeks.length - 1]!.met && weeks[weeks.length - 2]!.met) {
+    return true
+  }
+  if (dailyStreak(days, asOf) > 0) return false
+  const last = [...days].reduce<string | null>((best, day) => (day <= asOf && (!best || day > best) ? day : best), null)
+  if (!last) return false
+  return last <= shiftDay(asOf, -2) && last >= shiftDay(asOf, -7)
 }
 
 /**

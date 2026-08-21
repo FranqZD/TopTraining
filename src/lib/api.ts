@@ -211,7 +211,11 @@ export interface RecapMember {
   longestStreak: number
   /** weeksMet / weeksEvaluated, 0..1. null si no hubo semanas que evaluar. */
   completion: number | null
+  /** Apodo del mes. Los recaps viejos pueden no traerlo. */
+  title?: RecapTitle | null
 }
+
+export type RecapTitle = 'rey' | 'enrachado' | 'huevon' | 'pollito'
 
 export interface Recap {
   groupId: string
