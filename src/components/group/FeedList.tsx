@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Button, Card } from '../ui'
-import type { FeedItem, FeedPage } from '../../lib/api'
+import type { FeedItem, FeedPage, VoteResult } from '../../lib/api'
 import { CheckInSheet } from './CheckInSheet'
 import { FeedCard } from './FeedCard'
+import { applyVoteResult } from './VoteBar'
 
 const PAGE_SIZE = 25
 
@@ -30,6 +31,7 @@ export function FeedList({
   const [loading, setLoading] = useState(true)
   const [exhausted, setExhausted] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
+  const [flexToday, setFlexToday] = useState<string | null>(null)
   const sentinel = useRef<HTMLDivElement>(null)
 
   const fetchPage = useCallback(
@@ -40,6 +42,7 @@ export function FeedList({
         setItems((current) => (from ? [...current, ...page.items] : page.items))
         setCursor(page.nextCursor)
         setExhausted(page.nextCursor === null)
+        if (!from) setFlexToday(page.flexToday)
       } catch {
         if (!from) setItems([])
         setExhausted(true)
@@ -54,6 +57,8 @@ export function FeedList({
     setItems([])
     setCursor(null)
     setExhausted(false)
+    setOpenId(null)
+    setFlexToday(null)
     void fetchPage(null)
   }, [sourceKey, fetchPage])
 
@@ -67,6 +72,11 @@ export function FeedList({
     observer.observe(node)
     return () => observer.disconnect()
   }, [cursor, exhausted, loading, fetchPage])
+
+  const onVoted = (checkInId: string, result: VoteResult) => {
+    setItems((current) => applyVoteResult(current, checkInId, result))
+    setFlexToday(result.flexToday)
+  }
 
   if (loading && items.length === 0) {
     return (
@@ -95,6 +105,8 @@ export function FeedList({
             index={index}
             onOpen={() => setOpenId(item.id)}
             onAuthor={onAuthor}
+            flexToday={flexToday}
+            onVoted={onVoted}
           />
         ))}
 
@@ -125,6 +137,7 @@ export function FeedList({
             current.map((item) => (item.id === openId ? { ...item, commentCount: item.commentCount + 1 } : item)),
           )
         }
+        onVoted={(checkInId, result) => onVoted(checkInId, result)}
       />
     </>
   )

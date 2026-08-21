@@ -12,9 +12,11 @@ import {
   type FeedPage,
   type GroupCalendarData,
   type GroupWeekStatus,
+  type VoteResult,
 } from '../../lib/api'
 import { FeedCard } from './FeedCard'
 import { CheckInSheet } from './CheckInSheet'
+import { applyVoteResult } from './VoteBar'
 
 const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
 const GRID = 'grid grid-cols-[repeat(7,minmax(0,1fr))_2.75rem] gap-1'
@@ -255,21 +257,31 @@ function DaySheet({ groupId, day, onClose }: { groupId: string; day: string | nu
   const [items, setItems] = useState<FeedItem[]>([])
   const [loading, setLoading] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
+  const [flexToday, setFlexToday] = useState<string | null>(null)
 
   useEffect(() => {
     if (!day) {
       setItems([])
       setOpenId(null)
+      setFlexToday(null)
       return
     }
     setLoading(true)
     const query = new URLSearchParams({ day, today: localDay(), limit: '50' })
     api
       .get<FeedPage>(`/groups/${groupId}/feed?${query}`)
-      .then((page) => setItems(page.items))
+      .then((page) => {
+        setItems(page.items)
+        setFlexToday(page.flexToday)
+      })
       .catch(() => setItems([]))
       .finally(() => setLoading(false))
   }, [groupId, day])
+
+  const onVoted = (checkInId: string, result: VoteResult) => {
+    setItems((current) => applyVoteResult(current, checkInId, result))
+    setFlexToday(result.flexToday)
+  }
 
   return (
     <>
@@ -292,6 +304,8 @@ function DaySheet({ groupId, day, onClose }: { groupId: string; day: string | nu
                   onClose()
                   navigate(`/u/${userId}`)
                 }}
+                flexToday={flexToday}
+                onVoted={onVoted}
               />
             ))}
           </div>
@@ -306,6 +320,7 @@ function DaySheet({ groupId, day, onClose }: { groupId: string; day: string | nu
             current.map((item) => (item.id === openId ? { ...item, commentCount: item.commentCount + 1 } : item)),
           )
         }
+        onVoted={onVoted}
       />
     </>
   )

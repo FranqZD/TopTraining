@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router'
 import { Loader2, Pencil, Send } from 'lucide-react'
 import { Avatar, Button, Card, CardLabel, DayMark, Sheet } from '../ui'
-import { api, relativeTime, type CheckInDetail } from '../../lib/api'
+import { VoteBar } from './VoteBar'
+import { api, relativeTime, EMPTY_VOTES, type CheckInDetail, type VoteResult } from '../../lib/api'
 import { useProfile } from '../../profile/useProfile'
 
 /**
@@ -16,10 +17,12 @@ export function CheckInSheet({
   checkInId,
   onClose,
   onCommented,
+  onVoted,
 }: {
   checkInId: string | null
   onClose: () => void
   onCommented?: () => void
+  onVoted?: (checkInId: string, result: VoteResult) => void
 }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -125,6 +128,18 @@ export function CheckInSheet({
               Editar o deshacer
             </Button>
           )}
+
+          <VoteBar
+            checkInId={detail.id}
+            votes={detail.votes ?? EMPTY_VOTES}
+            flexToday={detail.flexToday ?? null}
+            onVoted={(result) => {
+              setDetail((current) =>
+                current ? { ...current, votes: result.votes, flexToday: result.flexToday } : current,
+              )
+              onVoted?.(detail.id, result)
+            }}
+          />
 
           {/* --- Comentarios --- */}
           <div className="flex flex-col gap-3 pt-2">

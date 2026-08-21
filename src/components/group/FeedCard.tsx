@@ -1,8 +1,9 @@
 import { motion } from 'motion/react'
 import { MessageCircle } from 'lucide-react'
 import { Avatar, Card, DayMark, StreakBadge } from '../ui'
-import { relativeTime, type FeedItem } from '../../lib/api'
+import { relativeTime, EMPTY_VOTES, type FeedItem, type VoteResult } from '../../lib/api'
 import { thumbnail } from '../../lib/photo'
+import { VoteBar } from './VoteBar'
 
 /**
  * Una tarjeta del feed. La misma pieza se usa en el scroll del grupo y al
@@ -13,12 +14,16 @@ export function FeedCard({
   index = 0,
   onOpen,
   onAuthor,
+  flexToday,
+  onVoted,
 }: {
   item: FeedItem
   index?: number
   onOpen: () => void
   /** Si está, el nombre y el avatar abren el feed de esa persona. */
   onAuthor?: (userId: string) => void
+  flexToday?: string | null
+  onVoted?: (checkInId: string, result: VoteResult) => void
 }) {
   const bare = !item.photoUrl && !item.note
 
@@ -75,18 +80,26 @@ export function FeedCard({
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={onOpen}
-          className="pressable flex items-center gap-2 self-start min-h-[var(--size-touch)] -my-1 pr-3 text-text-faint hover:text-accent-text cursor-pointer"
-        >
-          <MessageCircle size={17} strokeWidth={2.5} />
-          <span className="text-caption font-bold">
-            {item.commentCount === 0
-              ? 'Comentar'
-              : `${item.commentCount} ${item.commentCount === 1 ? 'comentario' : 'comentarios'}`}
-          </span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <VoteBar
+            checkInId={item.id}
+            votes={item.votes ?? EMPTY_VOTES}
+            flexToday={flexToday ?? null}
+            onVoted={(result) => onVoted?.(item.id, result)}
+          />
+          <button
+            type="button"
+            onClick={onOpen}
+            className="pressable flex items-center gap-2 self-start min-h-[var(--size-touch)] pr-3 text-text-faint hover:text-accent-text cursor-pointer"
+          >
+            <MessageCircle size={17} strokeWidth={2.5} />
+            <span className="text-caption font-bold">
+              {item.commentCount === 0
+                ? 'Comentar'
+                : `${item.commentCount} ${item.commentCount === 1 ? 'comentario' : 'comentarios'}`}
+            </span>
+          </button>
+        </div>
       </Card>
     </motion.article>
   )

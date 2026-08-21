@@ -127,6 +127,26 @@ export interface FriendWithStreaks extends Friend {
   streaks: Streaks
 }
 
+export interface VoteTally {
+  like: number
+  laura: number
+  flex: number
+  /** Qué votos puse yo en este post. */
+  mine: VoteKind[]
+}
+
+export type VoteKind = 'like' | 'laura' | 'flex'
+
+export interface VoteResult {
+  votes: VoteTally
+  /** Si el músculo se movió, el post que lo perdió. */
+  movedFrom: string | null
+  /** Post donde está hoy mi músculo, o null. */
+  flexToday: string | null
+}
+
+export const EMPTY_VOTES: VoteTally = { like: 0, laura: 0, flex: 0, mine: [] }
+
 export interface FeedItem {
   id: string
   day: string
@@ -136,11 +156,13 @@ export interface FeedItem {
   commentCount: number
   author: Friend
   streaks: Streaks
+  votes: VoteTally
 }
 
 export interface FeedPage {
   items: FeedItem[]
   nextCursor: string | null
+  flexToday: string | null
 }
 
 export interface PersonFeedPage extends FeedPage {
@@ -218,6 +240,8 @@ export interface Comment {
 export interface CheckInDetail extends CheckIn {
   user: Friend
   comments: Comment[]
+  votes: VoteTally
+  flexToday: string | null
 }
 
 export interface AppConfig {

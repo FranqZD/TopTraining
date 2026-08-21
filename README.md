@@ -54,7 +54,8 @@ de uso. Es una app de uso diario: nadie debería volver a ver el login.
 | `POST` | `/api/checkins` | marcar el día (409 si ya marcó) |
 | `GET` | `/api/checkins/latest` | último check-in propio o `?userId=` de un amigo |
 | `GET` | `/api/checkins` | tus últimos 60 días |
-| `GET` | `/api/checkins/:id` | detalle con comentarios (miembros del mismo grupo) |
+| `GET` | `/api/checkins/:id` | detalle con comentarios y votos |
+| `POST` | `/api/checkins/:id/votes` | like, laura o flex (músculo: uno por usuario y día) |
 | `POST` | `/api/checkins/:id/comments` | comentar el entrenamiento de otro |
 | `GET` | `/api/users/:id/feed` | entrenos de una persona (vos, amigo o mismo grupo) |
 | `GET` | `/api/groups/:id/feed` | feed paginado por cursor (`?cursor=&limit=`; `?day=` para un día) |

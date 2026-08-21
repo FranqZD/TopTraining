@@ -284,6 +284,57 @@ async function canViewUserCheckIns(viewerId: string, targetId: string): Promise<
   return sharesGroup(viewerId, targetId)
 }
 
+const VOTE_KINDS = ['like', 'laura', 'flex'] as const
+type VoteKind = (typeof VOTE_KINDS)[number]
+
+type VoteTally = { like: number; laura: number; flex: number; mine: VoteKind[] }
+
+function emptyTally(): VoteTally {
+  return { like: 0, laura: 0, flex: 0, mine: [] }
+}
+
+async function myFlexToday(userId: string, day: string): Promise<string | null> {
+  const row = await prisma.vote.findFirst({
+    where: { userId, kind: 'flex', day },
+    select: { checkInId: true },
+  })
+  return row?.checkInId ?? null
+}
+
+async function tallyVotes(checkInId: string, userId: string): Promise<VoteTally> {
+  const rows = await prisma.vote.findMany({
+    where: { checkInId },
+    select: { userId: true, kind: true },
+  })
+  const tally = emptyTally()
+  for (const row of rows) {
+    if (row.kind !== 'like' && row.kind !== 'laura' && row.kind !== 'flex') continue
+    tally[row.kind] += 1
+    if (row.userId === userId) tally.mine.push(row.kind)
+  }
+  return tally
+}
+
+async function votesForCheckIns(
+  checkInIds: string[],
+  userId: string,
+): Promise<Map<string, VoteTally>> {
+  const byCheckIn = new Map(checkInIds.map((id) => [id, emptyTally()]))
+  if (checkInIds.length === 0) return byCheckIn
+  const rows = await prisma.vote.findMany({
+    where: { checkInId: { in: checkInIds } },
+    select: { checkInId: true, userId: true, kind: true },
+  })
+  for (const row of rows) {
+    if (row.kind !== 'like' && row.kind !== 'laura' && row.kind !== 'flex') continue
+    const tally = byCheckIn.get(row.checkInId)
+    if (!tally) continue
+    tally[row.kind] += 1
+    if (row.userId === userId) tally.mine.push(row.kind)
+  }
+  return byCheckIn
+}
+
 /* ---------------------------------------------------------------------------
    Amigos — con solicitud: pending -> accepted
    ------------------------------------------------------------------------- */
@@ -527,6 +578,11 @@ app.get('/api/users/:id/feed', requireAuth, async (req, res) => {
     friendCode: profile.friendCode,
   }
 
+  const [tallies, flexToday] = await Promise.all([
+    votesForCheckIns(page.map((row) => row.id), req.userId!),
+    myFlexToday(req.userId!, today),
+  ])
+
   res.json({
     user,
     streaks,
@@ -539,8 +595,10 @@ app.get('/api/users/:id/feed', requireAuth, async (req, res) => {
       commentCount: row._count.comments,
       author: row.user,
       streaks,
+      votes: tallies.get(row.id) ?? emptyTally(),
     })),
     nextCursor: hasMore ? page[page.length - 1]!.id : null,
+    flexToday,
   })
 })
 
@@ -741,6 +799,10 @@ app.get('/api/groups/:id/feed', requireAuth, async (req, res) => {
   ])
   const daysByUser = groupDaysByUser(history)
   const goalByUser = new Map(profiles.map((profile) => [profile.id, profile.weeklyFrequency ?? 0]))
+  const [tallies, flexToday] = await Promise.all([
+    votesForCheckIns(page.map((row) => row.id), req.userId!),
+    myFlexToday(req.userId!, today),
+  ])
 
   res.json({
     items: page.map((row) => ({
@@ -752,8 +814,10 @@ app.get('/api/groups/:id/feed', requireAuth, async (req, res) => {
       commentCount: row._count.comments,
       author: row.user,
       streaks: computeStreaks(daysByUser.get(row.userId) ?? [], goalByUser.get(row.userId) ?? 0, today),
+      votes: tallies.get(row.id) ?? emptyTally(),
     })),
     nextCursor: hasMore ? page[page.length - 1]!.id : null,
+    flexToday,
   })
 })
 
@@ -1013,11 +1077,16 @@ app.get('/api/checkins/:id', requireAuth, async (req, res) => {
     where: { id: String(req.params.id) },
     include: { user: { select: FRIEND_SELECT }, comments: { select: COMMENT_SELECT, orderBy: { createdAt: 'asc' } } },
   })
-  if (!checkIn || !(await sharesGroup(req.userId!, checkIn.userId))) {
+  if (!checkIn || !(await canViewUserCheckIns(req.userId!, checkIn.userId))) {
     res.status(404).json({ error: 'Ese entrenamiento no existe o no lo puedes ver' })
     return
   }
-  res.json(checkIn)
+  const today = todayFor(req)
+  const [votes, flexToday] = await Promise.all([
+    tallyVotes(checkIn.id, req.userId!),
+    myFlexToday(req.userId!, today),
+  ])
+  res.json({ ...checkIn, votes, flexToday })
 })
 
 /** Comentar el check-in de alguien con quien compartís un grupo. */
@@ -1116,6 +1185,70 @@ app.post('/api/checkins/:id/comments', requireAuth, async (req, res) => {
     select: COMMENT_SELECT,
   })
   res.status(201).json(comment)
+})
+
+/**
+ * Votar un check-in. Like y Laura son mutuamente excluyentes (uno u otro).
+ * El flex (músculo) es el súper voto: uno solo por usuario y por día; si ya
+ * lo habías puesto en otro post, se mueve.
+ */
+app.post('/api/checkins/:id/votes', requireAuth, async (req, res) => {
+  const parsed = z
+    .object({
+      kind: z.enum(VOTE_KINDS),
+      day: DAY,
+    })
+    .safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Voto inválido' })
+    return
+  }
+
+  const checkInId = String(req.params.id)
+  const { kind, day } = parsed.data
+  const userId = req.userId!
+
+  const checkIn = await prisma.checkIn.findUnique({
+    where: { id: checkInId },
+    select: { id: true, userId: true },
+  })
+  if (!checkIn || !(await canViewUserCheckIns(userId, checkIn.userId))) {
+    res.status(404).json({ error: 'Ese entrenamiento no existe o no lo puedes votar' })
+    return
+  }
+
+  let movedFrom: string | null = null
+  const existing = await prisma.vote.findUnique({
+    where: { checkInId_userId_kind: { checkInId, userId, kind } },
+  })
+
+  if (kind === 'flex') {
+    if (existing) {
+      await prisma.vote.delete({ where: { id: existing.id } })
+    } else {
+      const todayFlex = await prisma.vote.findFirst({
+        where: { userId, kind: 'flex', day },
+      })
+      await prisma.$transaction(async (tx) => {
+        if (todayFlex) {
+          movedFrom = todayFlex.checkInId
+          await tx.vote.delete({ where: { id: todayFlex.id } })
+        }
+        await tx.vote.create({ data: { checkInId, userId, kind: 'flex', day } })
+      })
+    }
+  } else if (existing) {
+    await prisma.vote.delete({ where: { id: existing.id } })
+  } else {
+    const other = kind === 'like' ? 'laura' : 'like'
+    await prisma.$transaction([
+      prisma.vote.deleteMany({ where: { checkInId, userId, kind: other } }),
+      prisma.vote.create({ data: { checkInId, userId, kind, day } }),
+    ])
+  }
+
+  const [votes, flexToday] = await Promise.all([tallyVotes(checkInId, userId), myFlexToday(userId, day)])
+  res.json({ votes, movedFrom, flexToday })
 })
 
 /* ------------------------------------------------------------------------- */

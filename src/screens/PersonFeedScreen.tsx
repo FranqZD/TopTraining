@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { ArrowLeft, Loader2 } from 'lucide-react'
-import { Avatar, Button, StreakLabel } from '../../components/ui'
-import { FeedList } from '../../components/group/FeedList'
-import { api, localDay, ApiError, type Friend, type PersonFeedPage, type Streaks } from '../../lib/api'
-import { useProfile } from '../../profile/useProfile'
+import { Avatar, Button, StreakLabel } from '../components/ui'
+import { FeedList } from '../components/group/FeedList'
+import { api, localDay, ApiError, type Friend, type PersonFeedPage, type Streaks } from '../lib/api'
+import { useProfile } from '../profile/useProfile'
 
 /**
  * Los entrenos de una persona. Se abre tocando su nombre o avatar en el feed,

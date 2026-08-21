@@ -45,6 +45,7 @@ model User {
   ownedGroups      Group[]       @relation("GroupOwner")
   groupMemberships GroupMember[]
   comments         Comment[]
+  votes            Vote[]
   pushSubscriptions PushSubscription[]
   pushLogs          PushLog[]
 
@@ -199,6 +200,7 @@ model CheckIn {
   /// Además de garantizar un check-in por día, este índice único es el que
   /// resuelve "último check-in de un usuario" (userId + day desc) sin scan.
   comments Comment[]
+  votes    Vote[]
 
   @@unique([userId, day])
   @@map("checkin")
@@ -237,6 +239,30 @@ model PushLog {
 
   @@unique([userId, day, kind])
   @@map("push_log")
+}
+
+/// Voto en un check-in. Tres clases:
+///   like  — el like de siempre
+///   laura — el otro voto regular (con like, uno u otro, no los dos)
+///   flex  — el súper voto (💪). Un usuario solo puede tener uno por día:
+///           el índice parcial vote_flex_user_day lo garantiza.
+model Vote {
+  id        String   @id @default(cuid())
+  checkInId String
+  userId    String
+  /// like | laura | flex
+  kind      String
+  /// Día local del votante, "YYYY-MM-DD". El flex se ata a este día.
+  day       String
+  createdAt DateTime @default(now())
+
+  checkIn CheckIn @relation(fields: [checkInId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([checkInId, userId, kind])
+  @@index([checkInId])
+  @@index([userId, kind, day])
+  @@map("vote")
 }
 
 /// Comentario en el check-in de otro. Puede comentar cualquier miembro de

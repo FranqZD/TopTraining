@@ -157,3 +157,18 @@ CREATE UNIQUE INDEX IF NOT EXISTS "push_subscription_endpoint_key" ON "push_subs
 CREATE INDEX IF NOT EXISTS "push_subscription_userId_idx" ON "push_subscription"("userId");
 CREATE UNIQUE INDEX IF NOT EXISTS "push_log_userId_day_kind_key" ON "push_log"("userId", "day", "kind");
 CREATE INDEX IF NOT EXISTS "comment_checkInId_createdAt_idx" ON "comment"("checkInId", "createdAt");
+
+CREATE TABLE IF NOT EXISTS "vote" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "checkInId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "kind" TEXT NOT NULL,
+    "day" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "vote_checkInId_fkey" FOREIGN KEY ("checkInId") REFERENCES "checkin" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "vote_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "vote_checkInId_userId_kind_key" ON "vote"("checkInId", "userId", "kind");
+CREATE INDEX IF NOT EXISTS "vote_checkInId_idx" ON "vote"("checkInId");
+CREATE INDEX IF NOT EXISTS "vote_userId_kind_day_idx" ON "vote"("userId", "kind", "day");
+CREATE UNIQUE INDEX IF NOT EXISTS "vote_flex_user_day" ON "vote"("userId", "day") WHERE "kind" = 'flex';
