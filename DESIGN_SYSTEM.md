@@ -287,8 +287,8 @@ Referencia de que el sistema aguanta pantallas reales:
   mismo nombre (`icon-180`, `icon-192`, `icon-512`, …).
 - **Recap:** el número grande manda (`.num` en `text-stat-xl`), la barra de
   cumplimiento cambia de color por tramos (success / warning / danger) y el
-  veredicto en texto acompaña al número. La tarjeta del "más huevón" usa
-  `danger` sin dramatismo: el chiste está en el texto, no en el rojo.
+  veredicto en texto acompaña al número. Sin tarjetas de “quién la rompió”
+  ni “el más huevón”: el recap cuenta el mes, no señala a nadie.
 - **Modales:** siempre hoja inferior, nunca modal centrado. En una app que se
   usa con una mano, lo importante tiene que caer cerca del pulgar.
 

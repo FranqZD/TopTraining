@@ -26,6 +26,19 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    id: '2026.08.27-recap-cards',
+    dateLabel: '27 ago 2026',
+    title: 'El recap ya no señala',
+    tagline: 'Se acabó el podio de la burla.',
+    items: [
+      {
+        icon: 'trophy',
+        title: 'Sin “la rompió” ni “el más huevón”',
+        detail: 'El recap muestra cómo le fue al grupo y a cada uno. Nada de tarjetas para señalar.',
+      },
+    ],
+  },
+  {
     id: '2026.08.27-streaks',
     dateLabel: '27 ago 2026',
     title: 'La racha perdona el descanso',

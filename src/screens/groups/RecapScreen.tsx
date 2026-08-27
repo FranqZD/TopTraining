@@ -14,7 +14,6 @@ import {
   Flame,
   Loader2,
   Share2,
-  Turtle,
 } from 'lucide-react'
 import { Avatar, Button, Card, CardLabel, cn } from '../../components/ui'
 import { api, localDay, localMonth, type Recap, type RecapMember, type RecapTitle } from '../../lib/api'
@@ -26,10 +25,9 @@ import { useProfile } from '../../profile/useProfile'
  * El mes en curso se calcula al vuelo y se avisa que es provisorio; los meses
  * cerrados salen del recap congelado que dejó el job del día 1.
  *
- * La pantalla se lee de arriba abajo como una historia: cuánto entrenó el grupo,
- * quién quedó arriba y quién abajo, y recién después la tabla con todos.
- * La navegación entre meses es con flechas y nada más: no hay un solo campo de
- * texto en toda la pantalla.
+ * La pantalla se lee de arriba abajo como una historia: cuánto entrenó el grupo
+ * y después la tabla con todos. La navegación entre meses es con flechas y nada
+ * más: no hay un solo campo de texto en toda la pantalla.
  */
 
 /** Con qué se ordena y qué número se muestra a la derecha de la tabla. */
@@ -124,46 +122,17 @@ export function RecapScreen() {
             {me && <MyVotes member={me} />}
             <GroupCard recap={recap} month={month} />
 
-            {/* --- Los dos extremos del mes, uno al lado del otro --- */}
-            <div className={cn('grid gap-3', recap.best && (recap.worst || recap.everyoneDelivered) && 'grid-cols-2')}>
-              {recap.best && (
-                <Highlight
-                  label="La rompió"
-                  icon={<Crown size={14} strokeWidth={2.5} />}
-                  member={recap.best}
-                  tone="best"
-                  line={`Cumplió ${recap.best.weeksMet} de ${recap.best.weeksEvaluated} semanas${
-                    recap.best.longestStreak > 1 ? `, con ${recap.best.longestStreak} días seguidos` : ''
-                  }.`}
-                />
-              )}
-
-              {recap.everyoneDelivered ? (
-                <Card className="flex flex-col gap-2.5 border-success/45 bg-success-tint !p-4">
-                  <span className="tape flex items-center gap-1.5 text-success">
-                    <Flame size={14} strokeWidth={2.5} fill="currentColor" />
-                    Cumplieron todos
-                  </span>
-                  <p className="text-caption text-text-muted">
-                    Este mes no hay a quién echarle carrilla. Disfrútenlo, no va a durar.
-                  </p>
-                </Card>
-              ) : (
-                recap.worst && (
-                  <Highlight
-                    label="El más huevón"
-                    icon={<Turtle size={14} strokeWidth={2.5} />}
-                    member={recap.worst}
-                    tone="worst"
-                    line={
-                      recap.worst.weeksMet === 0
-                        ? `Cero de ${recap.worst.weeksEvaluated} semanas. Ni una.`
-                        : `Cumplió ${recap.worst.weeksMet} de ${recap.worst.weeksEvaluated} semanas.`
-                    }
-                  />
-                )
-              )}
-            </div>
+            {recap.everyoneDelivered && (
+              <Card className="flex flex-col gap-2.5 border-success/45 bg-success-tint !p-4">
+                <span className="tape flex items-center gap-1.5 text-success">
+                  <Flame size={14} strokeWidth={2.5} fill="currentColor" />
+                  Cumplieron todos
+                </span>
+                <p className="text-caption text-text-muted">
+                  Este mes no hay a quién echarle carrilla. Disfrútenlo, no va a durar.
+                </p>
+              </Card>
+            )}
 
             {/* --- Tabla --- */}
             <section className="flex flex-col gap-2.5">
@@ -563,7 +532,8 @@ const TITLE_TONE: Record<RecapTitle, string> = {
 }
 
 function TitleBadge({ title }: { title: RecapTitle }) {
-  const Icon = title === 'rey' ? Crown : title === 'enrachado' ? Flame : title === 'huevon' ? Turtle : Egg
+  if (title === 'huevon') return null
+  const Icon = title === 'rey' ? Crown : title === 'enrachado' ? Flame : Egg
   return (
     <span
       className={cn(
@@ -577,53 +547,6 @@ function TitleBadge({ title }: { title: RecapTitle }) {
   )
 }
 
-function Highlight({
-  label,
-  icon,
-  member,
-  line,
-  tone,
-}: {
-  label: string
-  icon: React.ReactNode
-  member: RecapMember
-  line: string
-  tone: 'best' | 'worst'
-}) {
-  const best = tone === 'best'
-  return (
-    <Link to={`/u/${member.id}`} className="pressable block">
-      <Card
-        notch={best}
-        className={cn(
-          'h-full flex flex-col gap-2.5 !p-4',
-          best ? 'bg-accent-tint border-accent-line' : 'bg-danger-tint border-danger/40',
-        )}
-      >
-        <span className={cn('tape flex items-center gap-1.5', best ? 'text-accent' : 'text-danger')}>
-          {icon}
-          {label}
-        </span>
-
-        <div className="flex items-center gap-2 min-w-0">
-          <Avatar name={member.name} image={member.image} size={32} />
-          <span className="font-bold truncate leading-tight">{member.name}</span>
-        </div>
-
-        <div className="flex items-baseline gap-1.5">
-          <span className={cn('num text-stat leading-none', best ? 'text-accent' : 'text-danger')}>
-            {member.completion === null ? '—' : `${Math.round(member.completion * 100)}%`}
-          </span>
-          {member.title && <TitleBadge title={member.title} />}
-        </div>
-
-        <p className="text-caption text-text-muted">{line}</p>
-      </Card>
-    </Link>
-  )
-}
-
-/** Barra de cumplimiento. Cambia de color según qué tan mal vienen. */
 function Meter({ value, className }: { value: number; className?: string }) {
   const tone = value >= 0.75 ? 'bg-success' : value >= 0.4 ? 'bg-warning' : 'bg-danger'
   return (

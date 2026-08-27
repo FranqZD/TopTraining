@@ -1,5 +1,5 @@
 import { prisma } from './db.js'
-import { dailyStreak, longestStreak, monthEnd, monthWeeks, shiftDay, summarizeWeeks, weekDays, weeklyStreak } from './streaks.js'
+import { longestStreak, monthEnd, monthWeeks, shiftDay, summarizeWeeks, weekDays, weeklyStreak } from './streaks.js'
 
 /**
  * Recap mensual de un grupo.
@@ -132,7 +132,6 @@ export async function computeRecap(groupId: string, month: string, today: string
       completion: weeks.length ? weeks.filter((week) => week.met).length / weeks.length : null,
       joinedAt: member.joinedAt.getTime(),
       weekly: weeklyStreak(days, goal, asOf),
-      recentlyBroken: recentlyBroken(days, asOf, weeks, goal),
       likes: votes.likes,
       lauras: votes.lauras,
     }
@@ -220,14 +219,12 @@ async function votesReceivedByUser(
 type DraftMember = Omit<RecapMember, 'title'> & {
   joinedAt: number
   weekly: number
-  recentlyBroken: boolean
 }
 
 /**
  * Un título por cabeza, en este orden:
  *   REY        — más semanas cumplidas, racha y entrenos (puede haber empate)
  *   ENRACHADO  — dos semanas seguidas cumpliendo la meta
- *   HUEVÓN     — se le acaba de romper la racha
  *   POLLITO    — el más nuevo del grupo (solo si hay alguien más viejo)
  */
 function assignTitles(drafted: DraftMember[]): RecapMember[] {
@@ -261,10 +258,6 @@ function assignTitles(drafted: DraftMember[]): RecapMember[] {
     if (member.weekly >= 2) claim(member.id, 'enrachado')
   }
 
-  for (const member of drafted) {
-    if (member.recentlyBroken) claim(member.id, 'huevon')
-  }
-
   const newest = Math.max(...drafted.map((member) => member.joinedAt))
   const hasOlder = drafted.some((member) => member.joinedAt < newest)
   if (hasOlder) {
@@ -273,26 +266,10 @@ function assignTitles(drafted: DraftMember[]): RecapMember[] {
     }
   }
 
-  return drafted.map(({ joinedAt: _joinedAt, weekly: _weekly, recentlyBroken: _broken, ...member }) => ({
+  return drafted.map(({ joinedAt: _joinedAt, weekly: _weekly, ...member }) => ({
     ...member,
     title: titleOf.get(member.id) ?? null,
   }))
-}
-
-/** Se le rompió ahora: última semana evaluada fallida después de una cumplida. */
-function recentlyBroken(
-  days: Set<string>,
-  asOf: string,
-  weeks: { met: boolean }[],
-  goal: number,
-): boolean {
-  if (weeks.length >= 2 && !weeks[weeks.length - 1]!.met && weeks[weeks.length - 2]!.met) {
-    return true
-  }
-  if (dailyStreak(days, goal, asOf) > 0) return false
-  const last = [...days].reduce<string | null>((best, day) => (day <= asOf && (!best || day > best) ? day : best), null)
-  if (!last) return false
-  return last <= shiftDay(asOf, -2) && last >= shiftDay(asOf, -7)
 }
 
 /**
