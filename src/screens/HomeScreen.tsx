@@ -250,7 +250,7 @@ function VoteHintToast({ open, onClose }: { open: boolean; onClose: () => void }
               <div className="min-w-0 flex-1 pt-0.5">
                 <p className="text-title leading-tight">Gracias por entrenar hoy</p>
                 <p className="text-caption text-text-muted mt-1">
-                  Ahora puedes votar en los entrenamientos de tus amigos :)
+                  Ganaste un aura y una laura. Mañana, los que des hoy se quedan.
                 </p>
               </div>
               <button

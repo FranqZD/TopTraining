@@ -154,18 +154,29 @@ export interface VoteTally {
   laura: number
   /** Qué votos puse yo en este post. */
   mine: VoteKind[]
+  /** De `mine`, los que ya no se pueden sacar: pasó un día. */
+  locked?: VoteKind[]
 }
 
-/** `like` es el aura. Uno de cada por día, y solo si entrenaste. */
+/** `like` es el aura. El cupo es un de cada por cada entreno que marcaste. */
 export type VoteKind = 'like' | 'laura'
+
+/** Cuántos votos tenés puestos vs cuántos entrenos hiciste. */
+export interface VoteWallet {
+  budget: number
+  like: number
+  laura: number
+}
 
 export interface VoteResult {
   votes: VoteTally
-  /** Si el voto venía de otro post, cuál lo perdió. */
+  /** Si el voto venía de otro post, cuál lo perdió. Ya no se mueve solo. */
   movedFrom: { checkInId: string; kind: VoteKind } | null
+  wallet?: VoteWallet
 }
 
-export const EMPTY_VOTES: VoteTally = { like: 0, laura: 0, mine: [] }
+export const EMPTY_VOTES: VoteTally = { like: 0, laura: 0, mine: [], locked: [] }
+export const EMPTY_WALLET: VoteWallet = { budget: 0, like: 0, laura: 0 }
 
 export interface FeedItem {
   id: string
@@ -190,8 +201,10 @@ export function isGroupPost(item: FeedItem): boolean {
 export interface FeedPage {
   items: FeedItem[]
   nextCursor: string | null
-  /** false si todavía no entrenaste hoy: sin entrenar no se vota. */
+  /** false si nunca entrenaste: sin entrenos no hay cupo para votar. */
   canVote: boolean
+  /** Cupo y votos puestos. Si falta, se infiere con `canVote`. */
+  wallet?: VoteWallet
   /** Gente del grupo. null fuera de un grupo. */
   memberCount: number | null
 }
@@ -285,6 +298,7 @@ export interface CheckInDetail extends CheckIn {
   comments: Comment[]
   votes: VoteTally
   canVote: boolean
+  wallet?: VoteWallet
 }
 
 export interface AppConfig {

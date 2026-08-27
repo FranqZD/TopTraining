@@ -7,7 +7,7 @@
  * Checklist: DESIGN_SYSTEM.md §10.
  */
 
-export type ReleaseIcon = 'camera' | 'bell' | 'ghost' | 'bar' | 'trophy' | 'pen'
+export type ReleaseIcon = 'camera' | 'bell' | 'ghost' | 'bar' | 'trophy' | 'pen' | 'lock'
 
 export interface ReleaseItem {
   icon: ReleaseIcon
@@ -25,6 +25,24 @@ export interface Release {
 }
 
 export const RELEASES: Release[] = [
+  {
+    id: '2026.08.27-votes',
+    dateLabel: '27 ago 2026',
+    title: 'Votos que se ganan entrenando',
+    tagline: 'Cuantos más entrenos, más auras y lauras.',
+    items: [
+      {
+        icon: 'bar',
+        title: 'Un aura y una laura por entreno',
+        detail: 'Cada vez que marcás, ganás uno de cada para dar. No se gastan al día: se acumulan.',
+      },
+      {
+        icon: 'lock',
+        title: 'Al día siguiente, se queda',
+        detail: 'El mismo día lo podés sacar o cambiar. Si pasó un día, ese voto ya no se mueve.',
+      },
+    ],
+  },
   {
     id: '2026.08.27-posts',
     dateLabel: '27 ago 2026',

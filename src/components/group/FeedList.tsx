@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Loader2, Trash2 } from 'lucide-react'
 import { Button, Card, CardLabel, Sheet } from '../ui'
-import { api, isGroupPost, localDay, shiftDay, type FeedItem, type FeedPage, type VoteResult } from '../../lib/api'
+import { api, isGroupPost, localDay, shiftDay, type FeedItem, type FeedPage, type VoteResult, type VoteWallet } from '../../lib/api'
 import { CheckInSheet } from './CheckInSheet'
 import { FeedCard } from './FeedCard'
 import { applyVoteResult } from './VoteBar'
@@ -40,6 +40,7 @@ export function FeedList({
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [canVote, setCanVote] = useState(false)
+  const [wallet, setWallet] = useState<VoteWallet | undefined>(undefined)
   const sentinel = useRef<HTMLDivElement>(null)
 
   const fetchPage = useCallback(
@@ -51,6 +52,7 @@ export function FeedList({
         setCursor(page.nextCursor)
         setExhausted(page.nextCursor === null)
         setCanVote(page.canVote)
+        setWallet(page.wallet)
       } catch {
         if (!from) setItems([])
         setExhausted(true)
@@ -68,6 +70,7 @@ export function FeedList({
     setOpenId(null)
     setDeleteId(null)
     setCanVote(false)
+    setWallet(undefined)
     void fetchPage(null)
   }, [sourceKey, fetchPage])
 
@@ -84,6 +87,7 @@ export function FeedList({
 
   const onVoted = (checkInId: string, result: VoteResult) => {
     setItems((current) => applyVoteResult(current, checkInId, result))
+    if (result.wallet) setWallet(result.wallet)
   }
 
   const confirmDelete = async () => {
@@ -131,6 +135,7 @@ export function FeedList({
                 onVoted={onVoted}
                 onDelete={groupId && isGroupPost(item) ? () => setDeleteId(item.id) : undefined}
                 canVote={canVote}
+                wallet={wallet}
                 canModerate={canModerate}
               />
             ))}

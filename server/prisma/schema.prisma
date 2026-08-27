@@ -276,16 +276,16 @@ model PushLog {
   @@map("push_log")
 }
 
-/// Voto en un check-in: `like` (aura) o `laura`. Cada uno tiene uno de cada
-/// por día — y solo si entrenó ese día. Los dos pueden ir a posts distintos,
-/// pero en un mismo post es uno u otro.
+/// Voto en un check-in: `like` (aura) o `laura`. El cupo es la cantidad de
+/// entrenos del votante. En un mismo post es uno u otro. Al día siguiente
+/// de darlo, ya no se mueve ni se saca.
 model Vote {
   id        String   @id @default(cuid())
   checkInId String
   userId    String
   /// like | laura
   kind      String
-  /// Día local del votante, "YYYY-MM-DD". Es el que raciona los votos.
+  /// Día local de quien votó, "YYYY-MM-DD". Al día siguiente el voto se traba.
   day       String
   createdAt DateTime @default(now())
 
@@ -293,9 +293,8 @@ model Vote {
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([checkInId, userId, kind])
-  /// Uno de cada tipo por día: el índice es lo que lo garantiza, no el código.
-  @@unique([userId, day, kind])
   @@index([checkInId])
+  @@index([userId, kind])
   @@map("vote")
 }
 

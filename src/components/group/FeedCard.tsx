@@ -1,7 +1,7 @@
 import { motion } from 'motion/react'
 import { Flame, MessageCircle, Trash2 } from 'lucide-react'
 import { Avatar, Card, DayMark } from '../ui'
-import { relativeTime, EMPTY_VOTES, isGroupPost, type FeedItem, type VoteResult } from '../../lib/api'
+import { relativeTime, EMPTY_VOTES, isGroupPost, type FeedItem, type VoteResult, type VoteWallet } from '../../lib/api'
 import { useProfile } from '../../profile/useProfile'
 import { thumbnail, photoUrls } from '../../lib/photo'
 import { VoteBar } from './VoteBar'
@@ -24,6 +24,7 @@ export function FeedCard({
   onVoted,
   onDelete,
   canVote = false,
+  wallet,
   canModerate = false,
 }: {
   item: FeedItem
@@ -34,8 +35,9 @@ export function FeedCard({
   onVoted?: (checkInId: string, result: VoteResult) => void
   /** Borrar un post: autor o dueño del grupo. */
   onDelete?: () => void
-  /** Si todavía no entrenó hoy, mira pero no vota. */
+  /** false si nunca entrenó: no hay cupo para votar. */
   canVote?: boolean
+  wallet?: VoteWallet
   canModerate?: boolean
 }) {
   const { profile } = useProfile()
@@ -165,6 +167,7 @@ export function FeedCard({
               checkInId={item.id}
               votes={item.votes ?? EMPTY_VOTES}
               canVote={canVote}
+              wallet={wallet}
               onVoted={(result) => onVoted?.(item.id, result)}
             />
 

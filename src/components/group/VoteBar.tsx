@@ -1,9 +1,19 @@
 import { Banana, Flame } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cn } from '../ui'
-import { api, localDay, EMPTY_VOTES, type FeedItem, type VoteKind, type VoteResult, type VoteTally } from '../../lib/api'
+import {
+  api,
+  localDay,
+  EMPTY_VOTES,
+  EMPTY_WALLET,
+  type FeedItem,
+  type VoteKind,
+  type VoteResult,
+  type VoteTally,
+  type VoteWallet,
+} from '../../lib/api'
 
-/** El voto es de a uno por día: el post que lo tenía antes lo pierde. */
+/** Si el voto se movió de otro post, esa tarjeta pierde el conteo. */
 export function applyVoteResult(items: FeedItem[], targetId: string, result: VoteResult): FeedItem[] {
   return items.map((item) => {
     if (item.id === targetId) return { ...item, votes: result.votes }
@@ -16,6 +26,7 @@ export function applyVoteResult(items: FeedItem[], targetId: string, result: Vot
           ...current,
           [kind]: Math.max(0, current[kind] - 1),
           mine: current.mine.filter((mine) => mine !== kind),
+          locked: (current.locked ?? []).filter((mine) => mine !== kind),
         },
       }
     }
@@ -23,23 +34,50 @@ export function applyVoteResult(items: FeedItem[], targetId: string, result: Vot
   })
 }
 
+function canToggleKind(kind: VoteKind, votes: VoteTally, wallet: VoteWallet, canVote: boolean): boolean {
+  const mine = new Set(votes.mine)
+  const locked = new Set(votes.locked ?? [])
+  const other: VoteKind = kind === 'like' ? 'laura' : 'like'
+  if (mine.has(kind)) return !locked.has(kind)
+  if (mine.has(other) && locked.has(other)) return false
+  if (wallet.budget === 0) return canVote
+  return wallet[kind] < wallet.budget
+}
+
+function kindLabel(kind: VoteKind, votes: VoteTally, wallet: VoteWallet, canVote: boolean): string {
+  const name = kind === 'like' ? 'aura' : 'laura'
+  const mine = new Set(votes.mine)
+  const locked = new Set(votes.locked ?? [])
+  const other: VoteKind = kind === 'like' ? 'laura' : 'like'
+  if (mine.has(kind) && locked.has(kind)) return `Este ${name} ya se quedó`
+  if (mine.has(other) && locked.has(other)) return 'Ese voto ya se quedó'
+  if (wallet.budget === 0 && !canVote) return `Entrena para dar ${name}`
+  if (!canToggleKind(kind, votes, wallet, canVote)) {
+    return kind === 'like' ? 'No te quedan auras' : 'No te quedan lauras'
+  }
+  return kind === 'like' ? 'Aura' : 'Laura'
+}
+
 /**
- * Aura (fuego) y Laura (plátano). Cada uno tiene uno de cada por día y solo
- * si entrenó: sin `canVote` los botones no responden.
+ * Aura (fuego) y Laura (plátano). El cupo es un de cada por entreno. El mismo
+ * día se puede sacar; al siguiente, se queda.
  */
 export function VoteBar({
   checkInId,
   votes,
+  wallet = EMPTY_WALLET,
   canVote,
   onVoted,
 }: {
   checkInId: string
   votes: VoteTally
+  wallet?: VoteWallet
   canVote: boolean
   onVoted: (result: VoteResult) => void
 }) {
   const tally = votes ?? EMPTY_VOTES
   const mine = new Set(tally.mine)
+  const purse = wallet ?? EMPTY_WALLET
 
   const toggle = async (kind: VoteKind) => {
     try {
@@ -56,9 +94,9 @@ export function VoteBar({
   return (
     <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-sm)] bg-ink-800">
       <VoteCell
-        label={canVote ? 'Aura' : 'Entrena hoy para dar aura'}
+        label={kindLabel('like', tally, purse, canVote)}
         active={mine.has('like')}
-        canVote={canVote}
+        enabled={canToggleKind('like', tally, purse, canVote)}
         tone="success"
         onClick={() => void toggle('like')}
       >
@@ -66,9 +104,9 @@ export function VoteBar({
       </VoteCell>
 
       <VoteCell
-        label={canVote ? 'Laura' : 'Entrena hoy para dar laura'}
+        label={kindLabel('laura', tally, purse, canVote)}
         active={mine.has('laura')}
-        canVote={canVote}
+        enabled={canToggleKind('laura', tally, purse, canVote)}
         tone="danger"
         onClick={() => void toggle('laura')}
       >
@@ -81,14 +119,14 @@ export function VoteBar({
 function VoteCell({
   label,
   active,
-  canVote,
+  enabled,
   tone,
   onClick,
   children,
 }: {
   label: string
   active: boolean
-  canVote: boolean
+  enabled: boolean
   tone: 'success' | 'danger'
   onClick: () => void
   children: ReactNode
@@ -105,13 +143,14 @@ function VoteCell({
         event.stopPropagation()
         onClick()
       }}
-      disabled={!canVote}
+      disabled={!enabled}
       aria-label={label}
       aria-pressed={active}
       className={cn(
-        'pressable grid place-items-center h-9 cursor-pointer',
+        'pressable grid place-items-center h-9',
         tones[tone],
-        !canVote && 'bg-ink-850 text-text-faint cursor-default',
+        enabled ? 'cursor-pointer' : 'cursor-default',
+        !enabled && !active && 'bg-ink-850 text-text-faint',
       )}
     >
       {children}

@@ -13,6 +13,7 @@ import {
   type GroupCalendarData,
   type GroupWeekStatus,
   type VoteResult,
+  type VoteWallet,
 } from '../../lib/api'
 import { FeedCard } from './FeedCard'
 import { CheckInSheet } from './CheckInSheet'
@@ -258,12 +259,14 @@ function DaySheet({ groupId, day, onClose }: { groupId: string; day: string | nu
   const [loading, setLoading] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
   const [canVote, setCanVote] = useState(false)
+  const [wallet, setWallet] = useState<VoteWallet | undefined>(undefined)
 
   useEffect(() => {
     if (!day) {
       setItems([])
       setOpenId(null)
       setCanVote(false)
+      setWallet(undefined)
       return
     }
     setLoading(true)
@@ -273,6 +276,7 @@ function DaySheet({ groupId, day, onClose }: { groupId: string; day: string | nu
       .then((page) => {
         setItems(page.items)
         setCanVote(page.canVote)
+        setWallet(page.wallet)
       })
       .catch(() => setItems([]))
       .finally(() => setLoading(false))
@@ -280,6 +284,7 @@ function DaySheet({ groupId, day, onClose }: { groupId: string; day: string | nu
 
   const onVoted = (checkInId: string, result: VoteResult) => {
     setItems((current) => applyVoteResult(current, checkInId, result))
+    if (result.wallet) setWallet(result.wallet)
   }
 
   return (
@@ -305,6 +310,7 @@ function DaySheet({ groupId, day, onClose }: { groupId: string; day: string | nu
                 }}
                 onVoted={onVoted}
                 canVote={canVote}
+                wallet={wallet}
               />
             ))}
           </div>

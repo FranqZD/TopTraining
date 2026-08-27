@@ -347,29 +347,39 @@ function isVoteKind(kind: string): kind is VoteKind {
   return kind === 'like' || kind === 'laura'
 }
 
-type VoteTally = { like: number; laura: number; mine: VoteKind[] }
+type VoteTally = { like: number; laura: number; mine: VoteKind[]; locked: VoteKind[] }
+type VoteWallet = { budget: number; like: number; laura: number }
 
 function emptyTally(): VoteTally {
-  return { like: 0, laura: 0, mine: [] }
+  return { like: 0, laura: 0, mine: [], locked: [] }
 }
 
-/** Votar cuesta haber entrenado ese día: el que no marcó, no opina. */
-function trainedOn(userId: string, day: string): Promise<boolean> {
-  return prisma.checkIn
-    .findUnique({ where: { userId_day: { userId, day } }, select: { id: true } })
-    .then((checkIn) => checkIn !== null)
+/** Cuántos auras/lauras te quedan: un cupo de cada por cada entreno que marcaste. */
+async function voteWalletOf(userId: string): Promise<VoteWallet> {
+  const [budget, like, laura] = await Promise.all([
+    prisma.checkIn.count({ where: { userId } }),
+    prisma.vote.count({ where: { userId, kind: 'like' } }),
+    prisma.vote.count({ where: { userId, kind: 'laura' } }),
+  ])
+  return { budget, like, laura }
 }
 
-async function tallyVotes(checkInId: string, userId: string): Promise<VoteTally> {
+function markMine(tally: VoteTally, row: { userId: string; kind: VoteKind; day: string }, userId: string, today: string) {
+  if (row.userId !== userId) return
+  tally.mine.push(row.kind)
+  if (row.day < today) tally.locked.push(row.kind)
+}
+
+async function tallyVotes(checkInId: string, userId: string, today: string): Promise<VoteTally> {
   const rows = await prisma.vote.findMany({
     where: { checkInId },
-    select: { userId: true, kind: true },
+    select: { userId: true, kind: true, day: true },
   })
   const tally = emptyTally()
   for (const row of rows) {
     if (!isVoteKind(row.kind)) continue
     tally[row.kind] += 1
-    if (row.userId === userId) tally.mine.push(row.kind)
+    markMine(tally, { ...row, kind: row.kind }, userId, today)
   }
   return tally
 }
@@ -377,19 +387,20 @@ async function tallyVotes(checkInId: string, userId: string): Promise<VoteTally>
 async function votesForCheckIns(
   checkInIds: string[],
   userId: string,
+  today: string,
 ): Promise<Map<string, VoteTally>> {
   const byCheckIn = new Map(checkInIds.map((id) => [id, emptyTally()]))
   if (checkInIds.length === 0) return byCheckIn
   const rows = await prisma.vote.findMany({
     where: { checkInId: { in: checkInIds } },
-    select: { checkInId: true, userId: true, kind: true },
+    select: { checkInId: true, userId: true, kind: true, day: true },
   })
   for (const row of rows) {
     if (!isVoteKind(row.kind)) continue
     const tally = byCheckIn.get(row.checkInId)
     if (!tally) continue
     tally[row.kind] += 1
-    if (row.userId === userId) tally.mine.push(row.kind)
+    markMine(tally, { userId: row.userId, kind: row.kind, day: row.day }, userId, today)
   }
   return byCheckIn
 }
@@ -639,9 +650,9 @@ app.get('/api/users/:id/feed', requireAuth, async (req, res) => {
     friendCode: profile.friendCode,
   }
 
-  const [tallies, canVote] = await Promise.all([
-    votesForCheckIns(page.map((row) => row.id), req.userId!),
-    trainedOn(req.userId!, today),
+  const [tallies, wallet] = await Promise.all([
+    votesForCheckIns(page.map((row) => row.id), req.userId!, today),
+    voteWalletOf(req.userId!),
   ])
 
   res.json({
@@ -660,7 +671,8 @@ app.get('/api/users/:id/feed', requireAuth, async (req, res) => {
       votes: tallies.get(row.id) ?? emptyTally(),
     })),
     nextCursor: hasMore ? page[page.length - 1]!.id : null,
-    canVote,
+    canVote: wallet.budget > 0,
+    wallet,
     memberCount: null,
   })
 })
@@ -1050,7 +1062,7 @@ app.get('/api/groups/:id/feed', requireAuth, async (req, res) => {
   const today = todayFor(req)
   const authorIds = [...new Set(page.map((item) => item.row.userId))]
   const checkInIds = page.filter((item) => item.kind === 'checkin').map((item) => item.id)
-  const [history, profiles, tallies, canVote] = await Promise.all([
+  const [history, profiles, tallies, wallet] = await Promise.all([
     authorIds.length
       ? prisma.checkIn.findMany({
           where: { userId: { in: authorIds }, day: { gte: shiftDay(today, -STREAK_WINDOW_DAYS) } },
@@ -1060,8 +1072,8 @@ app.get('/api/groups/:id/feed', requireAuth, async (req, res) => {
     authorIds.length
       ? prisma.user.findMany({ where: { id: { in: authorIds } }, select: { id: true, weeklyFrequency: true } })
       : Promise.resolve([]),
-    votesForCheckIns(checkInIds, req.userId!),
-    trainedOn(req.userId!, today),
+    votesForCheckIns(checkInIds, req.userId!, today),
+    voteWalletOf(req.userId!),
   ])
   const daysByUser = groupDaysByUser(history)
   const goalByUser = new Map(profiles.map((profile) => [profile.id, profile.weeklyFrequency ?? 0]))
@@ -1100,7 +1112,8 @@ app.get('/api/groups/:id/feed', requireAuth, async (req, res) => {
       }
     }),
     nextCursor: hasMore ? encodeFeedCursor(page[page.length - 1]!) : null,
-    canVote,
+    canVote: wallet.budget > 0,
+    wallet,
     memberCount: memberIds.length,
   })
 })
@@ -1489,11 +1502,11 @@ app.get('/api/checkins/:id', requireAuth, async (req, res) => {
     return
   }
   const today = todayFor(req)
-  const [votes, canVote] = await Promise.all([
-    tallyVotes(checkIn.id, req.userId!),
-    trainedOn(req.userId!, today),
+  const [votes, wallet] = await Promise.all([
+    tallyVotes(checkIn.id, req.userId!, today),
+    voteWalletOf(req.userId!),
   ])
-  res.json({ ...toCheckIn(checkIn), votes, canVote })
+  res.json({ ...toCheckIn(checkIn), votes, canVote: wallet.budget > 0, wallet })
 })
 
 /** Comentar el check-in de alguien con quien compartís un grupo. */
@@ -1615,10 +1628,9 @@ app.post('/api/checkins/:id/comments', requireAuth, async (req, res) => {
 /**
  * Votar un check-in.
  *
- * Cada uno tiene un aura y una laura por día, y solo si entrenó ese día: la
- * opinión se gana entrenando. Los dos votos pueden ir a posts distintos, pero
- * en un mismo post es uno u otro. Si el voto ya estaba puesto en otro lado se
- * mueve acá; volver a tocarlo lo saca.
+ * El cupo es un aura y una laura por cada entreno que marcaste. En un mismo
+ * post es uno u otro. El mismo día lo podés sacar o cambiar; al día siguiente
+ * se queda.
  */
 app.post('/api/checkins/:id/votes', requireAuth, async (req, res) => {
   const parsed = z
@@ -1633,8 +1645,9 @@ app.post('/api/checkins/:id/votes', requireAuth, async (req, res) => {
   }
 
   const checkInId = String(req.params.id)
-  const { kind, day } = parsed.data
+  const { kind } = parsed.data
   const userId = req.userId!
+  const today = todayFor(req)
 
   const checkIn = await prisma.checkIn.findUnique({
     where: { id: checkInId },
@@ -1645,35 +1658,60 @@ app.post('/api/checkins/:id/votes', requireAuth, async (req, res) => {
     return
   }
 
-  if (!(await trainedOn(userId, day))) {
-    res.status(403).json({ error: 'Entrena hoy y después opinas' })
-    return
-  }
-
-  let movedFrom: { checkInId: string; kind: VoteKind } | null = null
   const existing = await prisma.vote.findUnique({
     where: { checkInId_userId_kind: { checkInId, userId, kind } },
   })
 
   if (existing) {
+    if (existing.day < today) {
+      res.status(403).json({ error: 'Ese voto ya se quedó' })
+      return
+    }
     await prisma.vote.delete({ where: { id: existing.id } })
   } else {
-    const heldElsewhere = await prisma.vote.findFirst({ where: { userId, kind, day } })
     const other: VoteKind = kind === 'like' ? 'laura' : 'like'
-    await prisma.$transaction(async (tx) => {
-      if (heldElsewhere) {
-        movedFrom = { checkInId: heldElsewhere.checkInId, kind }
-        await tx.vote.delete({ where: { id: heldElsewhere.id } })
-      }
-      // En un mismo post no se puede aplaudir y cargar a la vez.
-      await tx.vote.deleteMany({ where: { checkInId, userId, kind: other } })
-      await tx.vote.create({ data: { checkInId, userId, kind, day } })
+    const otherVote = await prisma.vote.findFirst({
+      where: { checkInId, userId, kind: other },
     })
+    if (otherVote && otherVote.day < today) {
+      res.status(403).json({ error: 'Ese voto ya se quedó' })
+      return
+    }
+
+    const wallet = await voteWalletOf(userId)
+    if (wallet.budget === 0) {
+      res.status(403).json({ error: 'Entrena y después opinas' })
+      return
+    }
+    if (wallet[kind] >= wallet.budget) {
+      res.status(403).json({ error: kind === 'like' ? 'No te quedan auras' : 'No te quedan lauras' })
+      return
+    }
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        if (otherVote) await tx.vote.delete({ where: { id: otherVote.id } })
+        const used = await tx.vote.count({ where: { userId, kind } })
+        const budget = await tx.checkIn.count({ where: { userId } })
+        if (budget === 0 || used >= budget) {
+          throw new Error('NO_BUDGET')
+        }
+        await tx.vote.create({ data: { checkInId, userId, kind, day: today } })
+      })
+    } catch (error) {
+      if (error instanceof Error && error.message === 'NO_BUDGET') {
+        res.status(403).json({
+          error: kind === 'like' ? 'No te quedan auras' : 'No te quedan lauras',
+        })
+        return
+      }
+      throw error
+    }
   }
 
-  res.json({ votes: await tallyVotes(checkInId, userId), movedFrom })
+  const [votes, wallet] = await Promise.all([tallyVotes(checkInId, userId, today), voteWalletOf(userId)])
+  res.json({ votes, movedFrom: null, wallet })
 
-  // Solo el voto que se pone avisa: sacarlo o llevárselo a otro post, no.
   if (!existing) {
     fireAndForget(notifyVote({ checkInId, ownerId: checkIn.userId, voterId: userId, kind }))
   }

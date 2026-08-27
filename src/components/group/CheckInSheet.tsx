@@ -136,8 +136,18 @@ export function CheckInSheet({
             checkInId={detail.id}
             votes={detail.votes ?? EMPTY_VOTES}
             canVote={detail.canVote}
+            wallet={detail.wallet}
             onVoted={(result) => {
-              setDetail((current) => (current ? { ...current, votes: result.votes } : current))
+              setDetail((current) =>
+                current
+                  ? {
+                      ...current,
+                      votes: result.votes,
+                      wallet: result.wallet ?? current.wallet,
+                      canVote: result.wallet ? result.wallet.budget > 0 : current.canVote,
+                    }
+                  : current,
+              )
               onVoted?.(detail.id, result)
             }}
           />
