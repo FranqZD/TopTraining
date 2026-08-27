@@ -204,10 +204,13 @@ model CheckIn {
   day    String
   /// Descripción libre. Opcional: el check-in se confirma con un solo toque.
   note   String?
-  /// Foto en R2. Opcional.
+  /// Primera foto en R2. Opcional. Se mantiene al día con `photos[0]`.
   photoUrl      String?
-  /// Key del objeto en R2, para poder borrar el archivo si se borra el check-in.
+  /// Key de la primera foto, para poder borrar el archivo.
   photoPublicId String?
+  /// JSON `[{url, publicId}, ...]`. Máximo 3. Los check-ins viejos no lo
+  /// tienen: se lee `photoUrl` como lista de una.
+  photos        String?
   createdAt DateTime @default(now())
 
   /// Además de garantizar un check-in por día, este índice único es el que

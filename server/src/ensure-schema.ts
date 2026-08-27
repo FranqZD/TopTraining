@@ -51,6 +51,8 @@ export async function ensureSchema(): Promise<void> {
       ['notifyFriends', 'BOOLEAN NOT NULL DEFAULT true'],
     ])
 
+    await addMissingColumns(client, 'checkin', [['photos', 'TEXT']])
+
     // El voto pasó a estar racionado: uno de cada tipo por día. Los votos
     // viejos pueden violar el índice nuevo, así que hay que limpiarlos —una
     // sola vez— antes de crearlo.

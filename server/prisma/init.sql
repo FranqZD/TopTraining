@@ -110,6 +110,7 @@ CREATE TABLE IF NOT EXISTS "checkin" (
     "note" TEXT,
     "photoUrl" TEXT,
     "photoPublicId" TEXT,
+    "photos" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "checkin_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );

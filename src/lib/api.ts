@@ -118,13 +118,20 @@ export interface GroupDetail extends Group {
   members: GroupMemberView[]
 }
 
+export interface CheckInPhoto {
+  url: string
+  publicId: string
+}
+
 export interface CheckIn {
   id: string
   userId: string
   day: string
   note: string | null
+  /** Primera foto. Conveniencia: es `photos[0].url`. */
   photoUrl: string | null
   photoPublicId: string | null
+  photos?: CheckInPhoto[]
   createdAt: string
 }
 
@@ -165,6 +172,8 @@ export interface FeedItem {
   day: string
   note: string | null
   photoUrl: string | null
+  /** URLs de las fotos, en orden. `photoUrl` es la primera. */
+  photos?: string[]
   createdAt: string
   commentCount: number
   author: Friend

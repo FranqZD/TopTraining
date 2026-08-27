@@ -12,7 +12,7 @@ import {
   type FriendRequests,
   type Group,
 } from '../lib/api'
-import { thumbnail } from '../lib/photo'
+import { thumbnail, photoUrls } from '../lib/photo'
 import { useProfile } from '../profile/useProfile'
 
 /**
@@ -71,6 +71,7 @@ export function HomeScreen() {
 
   const todaysCheckIn = checkIns.find((checkIn) => checkIn.day === today) ?? null
   const checkedInToday = todaysCheckIn !== null
+  const todayCover = todaysCheckIn ? photoUrls(todaysCheckIn)[0] : undefined
 
   /**
    * La meta de la semana es la que el usuario declaró: es la misma con la que
@@ -139,9 +140,9 @@ export function HomeScreen() {
                     {todaysCheckIn?.note ? todaysCheckIn.note : 'Toca para editarlo o deshacerlo.'}
                   </span>
                 </span>
-                {todaysCheckIn?.photoUrl ? (
+                {todayCover ? (
                   <img
-                    src={thumbnail(todaysCheckIn.photoUrl, 120)}
+                    src={thumbnail(todayCover, 120)}
                     alt=""
                     className="size-12 rounded-[var(--radius-md)] object-cover border border-success/30 shrink-0"
                   />

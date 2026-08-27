@@ -2,8 +2,9 @@ import { motion } from 'motion/react'
 import { Flame, MessageCircle } from 'lucide-react'
 import { Avatar, Card, DayMark } from '../ui'
 import { relativeTime, EMPTY_VOTES, type FeedItem, type VoteResult } from '../../lib/api'
-import { thumbnail } from '../../lib/photo'
+import { thumbnail, photoUrls } from '../../lib/photo'
 import { VoteBar } from './VoteBar'
+import { PhotoCarousel } from './PhotoCarousel'
 
 /**
  * Una tarjeta del feed. La misma pieza se usa en el scroll del grupo y al
@@ -29,7 +30,8 @@ export function FeedCard({
   /** Si todavía no entrenó hoy, mira pero no vota. */
   canVote?: boolean
 }) {
-  const bare = !item.photoUrl && !item.note
+  const urls = photoUrls(item).map((url) => thumbnail(url, 700))
+  const bare = urls.length === 0 && !item.note
   const aura = item.votes?.like ?? 0
   const laura = item.votes?.laura ?? 0
   const voted = aura + laura
@@ -107,15 +109,13 @@ export function FeedCard({
           )}
         </div>
 
-        {item.photoUrl && (
-          <button type="button" onClick={onOpen} className="pressable block cursor-pointer">
-            <img
-              src={thumbnail(item.photoUrl, 700)}
-              alt={`Entrenamiento de ${item.author.name}`}
-              loading="lazy"
-              className="w-full aspect-square object-cover rounded-[var(--radius-md)] border border-ink-800"
-            />
-          </button>
+        {urls.length > 0 && (
+          <PhotoCarousel
+            urls={urls}
+            alt={`Entrenamiento de ${item.author.name}`}
+            onOpen={onOpen}
+            className="rounded-[var(--radius-md)] border border-ink-800"
+          />
         )}
 
         {item.note && <p className="text-title text-ink-100">{item.note}</p>}

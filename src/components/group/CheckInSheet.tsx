@@ -5,6 +5,8 @@ import { Avatar, Button, Card, CardLabel, DayMark, Sheet } from '../ui'
 import { VoteBar } from './VoteBar'
 import { api, relativeTime, EMPTY_VOTES, type CheckInDetail, type VoteResult } from '../../lib/api'
 import { useProfile } from '../../profile/useProfile'
+import { photoUrls } from '../../lib/photo'
+import { PhotoCarousel } from './PhotoCarousel'
 
 /**
  * Vista de un entrenamiento: la foto, lo que escribió y los comentarios.
@@ -33,6 +35,7 @@ export function CheckInSheet({
 
   /** Si el entreno es mío puedo corregirlo o deshacerlo. */
   const mine = Boolean(detail && profile && detail.user.id === profile.id)
+  const urls = detail ? photoUrls(detail) : []
 
   useEffect(() => {
     if (!checkInId) {
@@ -99,18 +102,18 @@ export function CheckInSheet({
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          {detail.photoUrl && (
-            <img
-              src={detail.photoUrl}
+          {urls.length > 0 && (
+            <PhotoCarousel
+              urls={urls}
               alt={`Entrenamiento de ${detail.user.name}`}
-              className="w-full aspect-square object-cover rounded-[var(--radius-lg)] border border-ink-700"
+              className="rounded-[var(--radius-lg)] border border-ink-700"
             />
           )}
 
           {detail.note ? (
             <p className="text-body text-ink-100">{detail.note}</p>
           ) : (
-            !detail.photoUrl && (
+            urls.length === 0 && (
               <Card tone="outline" className="flex items-center gap-3">
                 <DayMark state="done" size="md" />
                 <p className="text-caption text-text-muted">Marcó que entrenó. Sin foto ni descripción.</p>

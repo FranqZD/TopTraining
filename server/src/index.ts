@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { auth, enabledProviders, isTrustedOrigin } from './auth.js'
 import { prisma } from './db.js'
 import { generateGroupCode } from './codes.js'
-import { deletePhoto, imageTransformBase, isOwnPhotoUrl, putCheckInPhoto, storageConfigured } from './storage.js'
+import { deletePhoto, deleteRemovedPhotos, feedPhotoFields, imageTransformBase, isOwnPhotoUrl, MAX_CHECKIN_PHOTOS, parseCheckInPhotos, persistPhotos, publicPhotos, putCheckInPhoto, storageConfigured } from './storage.js'
 import { computeStreaks, shiftDay, weekDays, weekStart } from './streaks.js'
 import { pushConfigured, sendToUser, vapidPublicKey } from './push.js'
 import {
@@ -651,7 +651,7 @@ app.get('/api/users/:id/feed', requireAuth, async (req, res) => {
       id: row.id,
       day: row.day,
       note: row.note,
-      photoUrl: row.photoUrl,
+      ...feedPhotoFields(row),
       createdAt: row.createdAt,
       commentCount: row._count.comments,
       author: row.user,
@@ -1009,7 +1009,7 @@ app.get('/api/groups/:id/feed', requireAuth, async (req, res) => {
       id: row.id,
       day: row.day,
       note: row.note,
-      photoUrl: row.photoUrl,
+      ...feedPhotoFields(row),
       createdAt: row.createdAt,
       commentCount: row._count.comments,
       author: row.user,
@@ -1065,14 +1065,14 @@ app.get('/api/groups/:id/calendar', requireAuth, async (req, res) => {
 
   const checkIns = await prisma.checkIn.findMany({
     where: { userId: { in: memberIds }, day: { gte: gridStart, lte: gridEnd } },
-    select: { userId: true, day: true, photoUrl: true },
+    select: { userId: true, day: true, photoUrl: true, photos: true },
   })
 
   const dayStats = new Map<string, { count: number; hasPhoto: boolean }>()
   for (const row of checkIns) {
     const current = dayStats.get(row.day) ?? { count: 0, hasPhoto: false }
     current.count += 1
-    if (row.photoUrl) current.hasPhoto = true
+    if (row.photoUrl || parseCheckInPhotos(row).length > 0) current.hasPhoto = true
     dayStats.set(row.day, current)
   }
 
@@ -1151,12 +1151,39 @@ app.get('/api/groups/:id/recap', requireAuth, async (req, res) => {
 /** El día lo manda el cliente: lo que importa es su día local, no el del server. */
 const DAY = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato esperado YYYY-MM-DD')
 
+const checkInPhotoSchema = z.object({
+  url: z.string().url(),
+  publicId: z.string().min(1).max(200),
+})
+
 const checkInSchema = z.object({
   day: DAY,
   note: z.string().trim().max(280).optional(),
+  photos: z.array(checkInPhotoSchema).max(MAX_CHECKIN_PHOTOS).optional(),
   photoUrl: z.string().url().optional(),
   photoPublicId: z.string().max(200).optional(),
 })
+
+function photosFromBody(data: {
+  photos?: { url: string; publicId: string }[]
+  photoUrl?: string
+  photoPublicId?: string
+}): { url: string; publicId: string }[] {
+  if (data.photos) return data.photos
+  if (data.photoUrl && data.photoPublicId) return [{ url: data.photoUrl, publicId: data.photoPublicId }]
+  return []
+}
+
+function toCheckIn<T extends { photos?: string | null; photoUrl?: string | null; photoPublicId?: string | null }>(
+  row: T,
+) {
+  const { photos: _stored, ...rest } = row
+  return { ...rest, ...publicPhotos(row) }
+}
+
+function invalidPhoto(photos: { url: string }[]): boolean {
+  return photos.some((photo) => !isOwnPhotoUrl(photo.url))
+}
 
 /**
  * El JPEG llega acá (mismo origen que el login) y este servidor lo pone en R2.
@@ -1177,7 +1204,15 @@ app.post(
       res.status(503).json({ error: 'Las fotos no están configuradas en este servidor' })
       return
     }
-    const parsed = z.object({ day: DAY }).safeParse({ day: req.header('x-checkin-day') })
+    const parsed = z
+      .object({
+        day: DAY,
+        slot: z.coerce.number().int().min(0).max(MAX_CHECKIN_PHOTOS - 1),
+      })
+      .safeParse({
+        day: req.header('x-checkin-day'),
+        slot: req.header('x-checkin-slot') ?? '0',
+      })
     if (!parsed.success) {
       res.status(400).json({ error: 'Día inválido' })
       return
@@ -1188,7 +1223,7 @@ app.post(
       return
     }
     try {
-      res.json(await putCheckInPhoto(req.userId!, parsed.data.day, body))
+      res.json(await putCheckInPhoto(req.userId!, parsed.data.day, body, parsed.data.slot))
     } catch (error) {
       console.error('[storage] no se pudo subir la foto:', error)
       res.status(502).json({ error: 'No pudimos guardar la foto' })
@@ -1202,11 +1237,11 @@ app.post('/api/checkins', requireAuth, async (req, res) => {
     res.status(400).json({ error: 'Check-in inválido' })
     return
   }
-  const { day, note, photoUrl, photoPublicId } = parsed.data
+  const photos = photosFromBody(parsed.data)
 
   // La URL viene del cliente, así que confirmamos que sea de nuestro bucket
   // de R2 antes de guardarla.
-  if (photoUrl && !isOwnPhotoUrl(photoUrl)) {
+  if (invalidPhoto(photos)) {
     res.status(400).json({ error: 'Esa foto no es válida' })
     return
   }
@@ -1214,17 +1249,22 @@ app.post('/api/checkins', requireAuth, async (req, res) => {
   // Uno por día. Si ya entrenó hoy no pisamos nada: devolvemos el que existe
   // para que la pantalla muestre "ya entrenaste hoy" en vez de duplicar.
   const existing = await prisma.checkIn.findUnique({
-    where: { userId_day: { userId: req.userId!, day } },
+    where: { userId_day: { userId: req.userId!, day: parsed.data.day } },
   })
   if (existing) {
-    res.status(409).json({ error: 'Ya marcaste el entrenamiento de hoy', checkIn: existing })
+    res.status(409).json({ error: 'Ya marcaste el entrenamiento de hoy', checkIn: toCheckIn(existing) })
     return
   }
 
   const checkIn = await prisma.checkIn.create({
-    data: { userId: req.userId!, day, note, photoUrl, photoPublicId },
+    data: {
+      userId: req.userId!,
+      day: parsed.data.day,
+      note: parsed.data.note,
+      ...persistPhotos(photos),
+    },
   })
-  res.status(201).json(checkIn)
+  res.status(201).json(toCheckIn(checkIn))
 
   fireAndForget(notifyNewCheckIn(checkIn))
 })
@@ -1250,7 +1290,7 @@ app.get('/api/checkins/latest', requireAuth, async (req, res) => {
     where: { userId: requested },
     orderBy: { day: 'desc' },
   })
-  res.json({ checkIn })
+  res.json({ checkIn: checkIn ? toCheckIn(checkIn) : null })
 })
 
 app.get('/api/checkins', requireAuth, async (req, res) => {
@@ -1259,7 +1299,7 @@ app.get('/api/checkins', requireAuth, async (req, res) => {
     orderBy: { day: 'desc' },
     take: 60,
   })
-  res.json(checkIns)
+  res.json(checkIns.map(toCheckIn))
 })
 
 
@@ -1289,7 +1329,7 @@ app.get('/api/checkins/:id', requireAuth, async (req, res) => {
     tallyVotes(checkIn.id, req.userId!),
     trainedOn(req.userId!, today),
   ])
-  res.json({ ...checkIn, votes, canVote })
+  res.json({ ...toCheckIn(checkIn), votes, canVote })
 })
 
 /** Comentar el check-in de alguien con quien compartís un grupo. */
@@ -1298,16 +1338,18 @@ app.get('/api/checkins/:id', requireAuth, async (req, res) => {
  * día: alguien puede querer sumarle la foto o corregir lo que escribió más
  * tarde, y no hay razón para prohibirlo.
  *
- * `removePhoto` borra la foto sin tocar el resto.
+ * `photos` es la lista nueva completa (vacía = sin fotos). `removePhoto`
+ * sigue valiendo: borra todas.
  */
 const checkInPatchSchema = z
   .object({
     note: z.string().trim().max(280).nullable().optional(),
+    photos: z.array(checkInPhotoSchema).max(MAX_CHECKIN_PHOTOS).optional(),
     photoUrl: z.string().url().optional(),
     photoPublicId: z.string().max(200).optional(),
     removePhoto: z.boolean().optional(),
   })
-  .refine((data) => !(data.removePhoto && data.photoUrl), {
+  .refine((data) => !(data.removePhoto && (data.photoUrl || (data.photos && data.photos.length > 0))), {
     message: 'No se puede quitar y poner la foto a la vez',
   })
 
@@ -1325,27 +1367,31 @@ app.patch('/api/checkins/:id', requireAuth, async (req, res) => {
     return
   }
 
-  const { note, photoUrl, photoPublicId, removePhoto } = parsed.data
+  const { note, removePhoto } = parsed.data
+  const nextPhotos = removePhoto
+    ? []
+    : parsed.data.photos
+      ? parsed.data.photos
+      : parsed.data.photoUrl && parsed.data.photoPublicId
+        ? [{ url: parsed.data.photoUrl, publicId: parsed.data.photoPublicId }]
+        : null
 
-  if (photoUrl && !isOwnPhotoUrl(photoUrl)) {
+  if (nextPhotos && invalidPhoto(nextPhotos)) {
     res.status(400).json({ error: 'Esa foto no es válida' })
     return
   }
 
-  // Si la foto se reemplaza o se quita, la vieja se va de R2. La excepción
-  // es cuando el public_id es el mismo: ahí ya la sobreescribimos.
-  const replacingPhoto = Boolean(removePhoto || (photoPublicId && photoPublicId !== checkIn.photoPublicId))
-  if (replacingPhoto && checkIn.photoPublicId) await deletePhoto(checkIn.photoPublicId)
+  const currentPhotos = parseCheckInPhotos(checkIn)
+  if (nextPhotos) await deleteRemovedPhotos(currentPhotos, nextPhotos)
 
   const updated = await prisma.checkIn.update({
     where: { id: checkIn.id },
     data: {
       ...(note !== undefined ? { note: note || null } : {}),
-      ...(removePhoto ? { photoUrl: null, photoPublicId: null } : {}),
-      ...(photoUrl ? { photoUrl, photoPublicId } : {}),
+      ...(nextPhotos ? persistPhotos(nextPhotos) : {}),
     },
   })
-  res.json(updated)
+  res.json(toCheckIn(updated))
 })
 
 /**
@@ -1362,7 +1408,9 @@ app.delete('/api/checkins/:id', requireAuth, async (req, res) => {
     return
   }
 
-  if (checkIn.photoPublicId) await deletePhoto(checkIn.photoPublicId)
+  for (const photo of parseCheckInPhotos(checkIn)) {
+    if (photo.publicId) await deletePhoto(photo.publicId)
+  }
   await prisma.checkIn.delete({ where: { id: checkIn.id } })
   res.json({ ok: true })
 })

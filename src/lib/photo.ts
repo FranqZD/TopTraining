@@ -16,6 +16,8 @@ import { ApiError } from './api'
 
 const MAX_SIDE = 1600
 const QUALITY = 0.82
+/** Hasta 3 fotos por check-in. El slot va en el key de R2. */
+export const MAX_CHECKIN_PHOTOS = 3
 
 /** Lo manda GET /api/config. Vacío = no transformar (dev). */
 let transformBase: string | null = null
@@ -57,7 +59,7 @@ export interface UploadedPhoto {
 }
 
 /** Sube la foto vía el API. La clave de R2 nunca sale del servidor. */
-export async function uploadCheckInPhoto(file: File, day: string): Promise<UploadedPhoto> {
+export async function uploadCheckInPhoto(file: File, day: string, slot = 0): Promise<UploadedPhoto> {
   const image = await compressImage(file)
   const response = await fetch('/api/uploads/checkin', {
     method: 'POST',
@@ -65,6 +67,7 @@ export async function uploadCheckInPhoto(file: File, day: string): Promise<Uploa
     headers: {
       'Content-Type': 'image/jpeg',
       'X-Checkin-Day': day,
+      'X-Checkin-Slot': String(slot),
     },
     body: image,
   })
@@ -85,4 +88,37 @@ export function thumbnail(url: string, size = 400): string {
   if (url.startsWith('blob:') || url.startsWith('data:')) return url
   if (url.includes('/cdn-cgi/image/')) return url
   return `${transformBase}/width=${size},height=${size},fit=cover,quality=82,format=auto/${url}`
+}
+
+/** URLs de las fotos de un check-in o un ítem del feed. */
+export function photoUrls(item: {
+  photos?: Array<string | { url: string }> | null
+  photoUrl?: string | null
+}): string[] {
+  if (item.photos && item.photos.length > 0) {
+    return item.photos.map((photo) => (typeof photo === 'string' ? photo : photo.url)).filter(Boolean)
+  }
+  return item.photoUrl ? [item.photoUrl] : []
+}
+
+/**
+ * Slot 0..2 que todavía no usa ninguna foto guardada. Las fotos viejas
+ * (`..._YYYY-MM-DD.jpg`, sin slot) ocupan el 0.
+ */
+export function nextPhotoSlots(existingPublicIds: string[], needed: number): number[] {
+  const used = new Set(
+    existingPublicIds.map(slotFromPublicId).filter((slot): slot is number => slot !== null),
+  )
+  const slots: number[] = []
+  for (let slot = 0; slot < MAX_CHECKIN_PHOTOS && slots.length < needed; slot++) {
+    if (!used.has(slot)) slots.push(slot)
+  }
+  return slots
+}
+
+function slotFromPublicId(publicId: string): number | null {
+  const slotted = publicId.match(/_\d{4}-\d{2}-\d{2}_([0-2])\.jpg$/)
+  if (slotted) return Number(slotted[1])
+  if (/_\d{4}-\d{2}-\d{2}\.jpg$/.test(publicId)) return 0
+  return null
 }

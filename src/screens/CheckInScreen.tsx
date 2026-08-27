@@ -3,13 +3,14 @@ import { useNavigate, useSearchParams } from 'react-router'
 import { AnimatePresence, motion } from 'motion/react'
 import { ArrowLeft, Camera, Image as ImageIcon, Loader2, Pencil, Trash2, X } from 'lucide-react'
 import { Button, Card, CardLabel, DayMark, Sheet, TextField } from '../components/ui'
-import { api, localDay, type AppConfig, type CheckIn } from '../lib/api'
-import { uploadCheckInPhoto } from '../lib/photo'
+import { api, localDay, type AppConfig, type CheckIn, type CheckInPhoto } from '../lib/api'
+import { MAX_CHECKIN_PHOTOS, nextPhotoSlots, photoUrls, uploadCheckInPhoto } from '../lib/photo'
+import { PhotoCarousel } from '../components/group/PhotoCarousel'
 
 /**
  * Check-in del día. Es LA acción de la app, así que el camino corto es
- * sagrado: se abre y se confirma de un toque. Solo dos campos, los dos
- * opcionales: una foto y un comentario.
+ * sagrado: se abre y se confirma de un toque. Foto (hasta 3) y comentario
+ * son opcionales.
  *
  * También es la pantalla donde se corrige lo hecho. Marcar por error, olvidarse
  * la foto o querer cambiar lo que escribiste son cosas normales, así que el
@@ -18,6 +19,31 @@ import { uploadCheckInPhoto } from '../lib/photo'
  */
 
 type Mode = 'loading' | 'view' | 'form' | 'done'
+
+type DraftPhoto =
+  | { key: string; kind: 'saved'; url: string; publicId: string }
+  | { key: string; kind: 'file'; file: File; preview: string }
+
+function draftsFromCheckIn(checkIn: CheckIn): DraftPhoto[] {
+  const photos =
+    checkIn.photos && checkIn.photos.length > 0
+      ? checkIn.photos
+      : checkIn.photoUrl
+        ? [{ url: checkIn.photoUrl, publicId: checkIn.photoPublicId ?? '' }]
+        : []
+  return photos.map((photo, index) => ({
+    key: photo.publicId || `saved-${index}`,
+    kind: 'saved' as const,
+    url: photo.url,
+    publicId: photo.publicId,
+  }))
+}
+
+function revokeFilePreviews(photos: DraftPhoto[]) {
+  for (const photo of photos) {
+    if (photo.kind === 'file') URL.revokeObjectURL(photo.preview)
+  }
+}
 
 export function CheckInScreen() {
   const navigate = useNavigate()
@@ -32,10 +58,7 @@ export function CheckInScreen() {
   const day = checkIn?.day ?? localDay()
 
   // --- Estado del formulario ---
-  const [file, setFile] = useState<File | null>(null)
-  const [objectUrl, setObjectUrl] = useState<string | null>(null)
-  /** Foto ya guardada. null cuando se quitó. */
-  const [savedPhoto, setSavedPhoto] = useState<string | null>(null)
+  const [draftPhotos, setDraftPhotos] = useState<DraftPhoto[]>([])
   const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -58,29 +81,52 @@ export function CheckInScreen() {
     ]).then(([existing, config]) => {
       setPhotosEnabled(Boolean(config?.photoUploads))
       setCheckIn(existing)
+      if (existing) setDraftPhotos(draftsFromCheckIn(existing))
       setMode(existing ? 'view' : 'form')
     })
   }, [editingId])
 
-  // La preview local es un object URL: hay que soltarlo o queda pinchada la memoria.
+  const draftsRef = useRef(draftPhotos)
   useEffect(() => {
-    if (!file) {
-      setObjectUrl(null)
-      return
-    }
-    const url = URL.createObjectURL(file)
-    setObjectUrl(url)
-    return () => URL.revokeObjectURL(url)
-  }, [file])
+    draftsRef.current = draftPhotos
+  })
+  useEffect(() => {
+    return () => revokeFilePreviews(draftsRef.current)
+  }, [])
 
-  const preview = objectUrl ?? savedPhoto
+  const addFiles = (list: FileList | null) => {
+    if (!list || list.length === 0) return
+    setDraftPhotos((current) => {
+      const room = MAX_CHECKIN_PHOTOS - current.length
+      const extra: DraftPhoto[] = []
+      for (const file of [...list].slice(0, room)) {
+        extra.push({
+          key: crypto.randomUUID(),
+          kind: 'file',
+          file,
+          preview: URL.createObjectURL(file),
+        })
+      }
+      return extra.length === 0 ? current : [...current, ...extra]
+    })
+  }
+
+  const removeDraft = (key: string) => {
+    setDraftPhotos((current) => {
+      const target = current.find((photo) => photo.key === key)
+      if (target?.kind === 'file') URL.revokeObjectURL(target.preview)
+      return current.filter((photo) => photo.key !== key)
+    })
+  }
 
   /** Pasa el check-in guardado al formulario para poder editarlo. */
   const startEditing = () => {
     if (!checkIn) return
     setComment(checkIn.note ?? '')
-    setSavedPhoto(checkIn.photoUrl)
-    setFile(null)
+    setDraftPhotos((current) => {
+      revokeFilePreviews(current)
+      return draftsFromCheckIn(checkIn)
+    })
     setError(null)
     setMode('form')
   }
@@ -89,24 +135,39 @@ export function CheckInScreen() {
     setSubmitting(true)
     setError(null)
     try {
-      let photo: { url: string; publicId: string } | null = null
-      if (file && photosEnabled) photo = await uploadCheckInPhoto(file, day)
+      let photos: CheckInPhoto[] = []
+      if (photosEnabled && draftPhotos.length > 0) {
+        const saved = draftPhotos.filter((photo) => photo.kind === 'saved')
+        const fresh = draftPhotos.filter((photo) => photo.kind === 'file')
+        const slots = nextPhotoSlots(
+          saved.map((photo) => photo.publicId),
+          fresh.length,
+        )
+        const uploaded: CheckInPhoto[] = []
+        for (let i = 0; i < fresh.length; i++) {
+          const stored = await uploadCheckInPhoto(fresh[i]!.file, day, slots[i] ?? i)
+          uploaded.push({ url: stored.url, publicId: stored.publicId })
+        }
+        let next = 0
+        photos = draftPhotos.map((photo) =>
+          photo.kind === 'saved' ? { url: photo.url, publicId: photo.publicId } : uploaded[next++]!,
+        )
+      }
 
       if (checkIn) {
         const updated = await api.patch<CheckIn>(`/checkins/${checkIn.id}`, {
           note: comment.trim(),
-          ...(photo ? { photoUrl: photo.url, photoPublicId: photo.publicId } : {}),
-          // Había foto guardada, la quitó y no puso otra.
-          ...(!photo && checkIn.photoUrl && !savedPhoto ? { removePhoto: true } : {}),
+          ...(photosEnabled ? { photos } : {}),
         })
+        revokeFilePreviews(draftPhotos)
         setCheckIn(updated)
+        setDraftPhotos(draftsFromCheckIn(updated))
         setMode('view')
       } else {
         const created = await api.post<CheckIn>('/checkins', {
           day,
           note: comment.trim() || undefined,
-          photoUrl: photo?.url,
-          photoPublicId: photo?.publicId,
+          photos,
         })
         setCheckIn(created)
         setMode('done')
@@ -175,31 +236,48 @@ export function CheckInScreen() {
           />
         ) : (
           <>
-            {/* --- Foto (opcional) --- */}
+            {/* --- Fotos (opcionales, hasta 3) --- */}
             {photosEnabled && (
               <section className="flex flex-col gap-3">
-                <CardLabel className="mb-0">Foto · opcional</CardLabel>
+                <CardLabel className="mb-0">
+                  Fotos · hasta {MAX_CHECKIN_PHOTOS}
+                  {draftPhotos.length > 0 && ` · ${draftPhotos.length} de ${MAX_CHECKIN_PHOTOS}`}
+                </CardLabel>
 
-                {preview ? (
-                  <div className="relative rounded-[var(--radius-lg)] overflow-hidden border border-ink-700">
-                    <img
-                      src={preview}
-                      alt="Vista previa del entreno"
-                      className="w-full aspect-square object-cover"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFile(null)
-                        setSavedPhoto(null)
-                      }}
-                      aria-label="Quitar la foto"
-                      className="pressable absolute top-3 right-3 grid place-items-center size-11 rounded-full bg-ink-1000/80 backdrop-blur border border-ink-700 text-ink-100 cursor-pointer"
-                    >
-                      <X size={20} strokeWidth={3} />
-                    </button>
+                {draftPhotos.length > 0 && (
+                  <div
+                    className={
+                      draftPhotos.length === 1
+                        ? 'grid grid-cols-1 gap-2'
+                        : draftPhotos.length === 2
+                          ? 'grid grid-cols-2 gap-2'
+                          : 'grid grid-cols-3 gap-2'
+                    }
+                  >
+                    {draftPhotos.map((photo) => (
+                      <div
+                        key={photo.key}
+                        className="relative rounded-[var(--radius-lg)] overflow-hidden border border-ink-700"
+                      >
+                        <img
+                          src={photo.kind === 'saved' ? photo.url : photo.preview}
+                          alt="Vista previa del entreno"
+                          className="w-full aspect-square object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeDraft(photo.key)}
+                          aria-label="Quitar la foto"
+                          className="pressable absolute top-2 right-2 grid place-items-center size-11 rounded-full bg-ink-1000/80 backdrop-blur border border-ink-700 text-ink-100 cursor-pointer"
+                        >
+                          <X size={20} strokeWidth={3} />
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                ) : (
+                )}
+
+                {draftPhotos.length < MAX_CHECKIN_PHOTOS && (
                   <div className="grid grid-cols-2 gap-3">
                     <PhotoButton onClick={() => cameraInput.current?.click()} icon={<Camera size={26} strokeWidth={2} />}>
                       Sacar foto
@@ -216,14 +294,21 @@ export function CheckInScreen() {
                   accept="image/*"
                   capture="environment"
                   className="hidden"
-                  onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+                  onChange={(event) => {
+                    addFiles(event.target.files)
+                    event.target.value = ''
+                  }}
                 />
                 <input
                   ref={galleryInput}
                   type="file"
                   accept="image/*"
+                  multiple
                   className="hidden"
-                  onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+                  onChange={(event) => {
+                    addFiles(event.target.files)
+                    event.target.value = ''
+                  }}
                 />
               </section>
             )}
@@ -256,8 +341,10 @@ export function CheckInScreen() {
                 icon={submitting ? <Loader2 size={20} strokeWidth={2.5} className="animate-spin" /> : undefined}
               >
                 {submitting
-                  ? file
-                    ? 'Subiendo foto…'
+                  ? draftPhotos.some((photo) => photo.kind === 'file')
+                    ? draftPhotos.filter((photo) => photo.kind === 'file').length > 1
+                      ? 'Subiendo fotos…'
+                      : 'Subiendo foto…'
                     : 'Guardando…'
                   : editing
                     ? 'Guardar cambios'
@@ -309,11 +396,11 @@ function SavedCheckIn({
         </div>
       </Card>
 
-      {checkIn.photoUrl && (
-        <img
-          src={checkIn.photoUrl}
+      {photoUrls(checkIn).length > 0 && (
+        <PhotoCarousel
+          urls={photoUrls(checkIn)}
           alt="Foto de tu entrenamiento"
-          className="w-full aspect-square object-cover rounded-[var(--radius-lg)] border border-ink-700"
+          className="rounded-[var(--radius-lg)] border border-ink-700"
         />
       )}
 
