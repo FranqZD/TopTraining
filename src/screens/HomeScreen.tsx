@@ -22,7 +22,7 @@ import { PetHome } from '../pets/PetHome'
  * y abajo la mascota en el hueco que queda — sin scrollear.
  */
 export function HomeScreen() {
-  const { profile } = useProfile()
+  const { profile, refresh } = useProfile()
   const location = useLocation()
   const navigate = useNavigate()
   const [groups, setGroups] = useState<Group[]>([])
@@ -33,6 +33,7 @@ export function HomeScreen() {
   const [pending, setPending] = useState(0)
   const [checkIns, setCheckIns] = useState<CheckIn[]>([])
   const [pet, setPet] = useState<PetView | undefined>()
+  const [petLoaded, setPetLoaded] = useState(false)
   /** Sale una sola vez, al aterrizar después de marcar el entreno. */
   const justCheckedIn = Boolean((location.state as { justCheckedIn?: boolean } | null)?.justCheckedIn)
   const [showVoteHint, setShowVoteHint] = useState(justCheckedIn)
@@ -49,7 +50,11 @@ export function HomeScreen() {
       .catch(() => setPending(0))
     // Mis últimos check-ins: con eso salen el estado de hoy y la semana entera.
     api.get<CheckIn[]>('/checkins').then(setCheckIns).catch(() => setCheckIns([]))
-    api.get<PetView>('/me/pet').then(setPet).catch(() => setPet(undefined))
+    api
+      .get<PetView>('/me/pet')
+      .then(setPet)
+      .catch(() => setPet(undefined))
+      .finally(() => setPetLoaded(true))
   }, [])
 
   // Limpia el flag del historial para que un F5 o un "atrás" no vuelva a
@@ -84,6 +89,26 @@ export function HomeScreen() {
   const goal = profile?.weeklyFrequency ?? Math.max(0, ...groups.map((group) => group.effectiveGoal))
   const doneThisWeek = days.filter((day) => done.has(day)).length
   const missing = Math.max(0, goal - doneThisWeek)
+
+  /** El perfil llega antes que `/me/pet`. Si ya hay especie, la pintamos ya
+   *  para no mostrar “Escoge tu mascota” un frame. El CTA solo sale cuando
+   *  sabemos que no hay una. */
+  const displayPet = useMemo((): PetView | undefined => {
+    if (pet?.species && pet.name) return pet
+    if (profile?.petSpecies && profile.petName) {
+      return {
+        species: profile.petSpecies,
+        name: profile.petName,
+        stage: pet?.stage ?? 1,
+        mood: pet?.mood ?? 'ok',
+        weeksMet: pet?.weeksMet ?? 0,
+        skipDays: pet?.skipDays ?? 0,
+        goal: pet?.goal ?? 0,
+      }
+    }
+    return pet
+  }, [pet, profile])
+  const petReady = petLoaded || !profile?.petSpecies
 
   if (!profile) return null
 
@@ -229,7 +254,14 @@ export function HomeScreen() {
           </div>
         </section>
 
-        <PetHome pet={pet} onAdopted={setPet} />
+        <PetHome
+          pet={displayPet}
+          ready={petReady}
+          onAdopted={(next) => {
+            setPet(next)
+            void refresh()
+          }}
+        />
       </div>
 
       <VoteHintToast open={showVoteHint} onClose={() => setShowVoteHint(false)} />

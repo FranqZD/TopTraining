@@ -7,12 +7,27 @@ import { Pet, SPECIES, SPECIES_NAMES, type PetHealth } from './Pet'
 /**
  * Hueco de la mascota en Inicio. Si no hay una elegida, invita a escoger.
  * El nivel es cuántas metas semanales cerraste (1 a 5).
+ *
+ * `ready` es false mientras no sabemos si ya adoptó: no se pinta el CTA, para
+ * que un recarga no deje “Escoge tu mascota” un instante encima de la real.
  */
-export function PetHome({ pet, onAdopted }: { pet?: PetView; onAdopted: (pet: PetView) => void }) {
+export function PetHome({
+  pet,
+  ready,
+  onAdopted,
+}: {
+  pet?: PetView
+  ready: boolean
+  onAdopted: (pet: PetView) => void
+}) {
   const [open, setOpen] = useState(false)
   const adopted = Boolean(pet?.species && pet.name)
   const level = displayLevel(pet?.stage)
   const health = toHealth(pet?.mood)
+
+  useEffect(() => {
+    if (adopted) setOpen(false)
+  }, [adopted])
 
   return (
     <section aria-label="Tu mascota" className="flex-1 min-h-0 flex flex-col gap-2">
@@ -35,7 +50,7 @@ export function PetHome({ pet, onAdopted }: { pet?: PetView; onAdopted: (pet: Pe
               {pet!.goal > 0 ? ` · ${moodLabel(pet!.mood)}` : ''}
             </p>
           </div>
-        ) : (
+        ) : ready ? (
           <button
             type="button"
             onClick={() => setOpen(true)}
@@ -51,11 +66,13 @@ export function PetHome({ pet, onAdopted }: { pet?: PetView; onAdopted: (pet: Pe
               <span className="text-body font-bold">Escoge tu mascota</span>
             </span>
           </button>
+        ) : (
+          <div className="flex-1 min-h-0" aria-hidden />
         )}
       </div>
 
       <AdoptSheet
-        open={open}
+        open={open && !adopted}
         onClose={() => setOpen(false)}
         onAdopted={(next) => {
           onAdopted(next)
@@ -91,6 +108,8 @@ function AdoptSheet({
     setSaving(true)
     try {
       onAdopted(await api.patch<PetView>('/me/pet', { species, name: trimmed }))
+    } catch {
+      onClose()
     } finally {
       setSaving(false)
     }
