@@ -71,7 +71,7 @@ export function PostComposer({ groupId, onPosted }: { groupId: string; onPosted:
               onChange={(event) => setBody(event.target.value.slice(0, MAX_BODY))}
               maxLength={MAX_BODY}
               rows={5}
-              placeholder="Avisá, cargá, coordiná…"
+              placeholder="Sueltalo todo hermano"
               className="w-full min-h-32 px-4 py-3 rounded-[var(--radius-md)] bg-ink-900 border border-ink-700 outline-none text-body placeholder:text-ink-500 focus:border-accent transition-colors resize-none"
             />
             <span className="tape text-text-faint self-end">
