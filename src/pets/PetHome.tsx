@@ -6,7 +6,7 @@ import { Pet, SPECIES, SPECIES_NAMES, type PetHealth } from './Pet'
 
 /**
  * Hueco de la mascota en Inicio. Si no hay una elegida, invita a escoger.
- * El nivel es cuántas metas semanales cerraste (1 a 5).
+ * El nivel es semanas consecutivas cumpliendo la meta (1 a 5). Si fallas, 1.
  *
  * `ready` es false mientras no sabemos si ya adoptó: no se pinta el CTA, para
  * que un recarga no deje “Escoge tu mascota” un instante encima de la real.
@@ -22,7 +22,7 @@ export function PetHome({
 }) {
   const [open, setOpen] = useState(false)
   const adopted = Boolean(pet?.species && pet.name)
-  const level = displayLevel(pet?.stage)
+  const level = pet?.mood === 'broken' ? 1 : displayLevel(pet?.stage)
   const health = toHealth(pet?.mood)
 
   useEffect(() => {
@@ -180,8 +180,7 @@ function moodTone(mood: PetMood): string {
 }
 
 function moodLabel(mood: PetMood): string {
-  if (mood === 'skip1') return 'Un día sin marcar'
-  if (mood === 'skip2') return 'Lleva días sin marcar'
-  if (mood === 'broken') return 'Se rompió la racha'
+  if (mood === 'skip1' || mood === 'skip2') return 'Hoy no has marcado'
+  if (mood === 'broken') return 'No llegaste a la meta'
   return 'Al día'
 }

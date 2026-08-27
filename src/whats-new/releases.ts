@@ -26,6 +26,25 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    id: '2026.08.27-pet-life',
+    dateLabel: '27 ago 2026',
+    title: 'Tu mascota, al día',
+    tagline: 'Marca y se anima. Si no llegas a la meta, vuelve a empezar.',
+    items: [
+      {
+        icon: 'paw',
+        title: 'Hasta que marques',
+        detail: 'Si todavía no marcas el día, se ve triste. Al marcar, revive.',
+      },
+      {
+        icon: 'paw',
+        title: 'Si no llegas, a nivel 1',
+        detail:
+          'Si la semana se cierra sin tu meta, se pone fallecida y el nivel vuelve a 1. Cumple otra vez y vuelve a crecer.',
+      },
+    ],
+  },
+  {
     id: '2026.08.27-pause-posts',
     dateLabel: '27 ago 2026',
     title: 'El grupo, otra vez entrenos',
@@ -64,8 +83,8 @@ export const RELEASES: Release[] = [
       },
       {
         icon: 'paw',
-        title: 'Si dejas de marcar, se nota',
-        detail: 'Un día, unos días, o si se rompe la racha: cambia de ánimo.',
+        title: 'Vive con tu semana',
+        detail: 'Hasta que marques, se ve triste. Si no llegas a la meta, vuelve a nivel 1.',
       },
     ],
   },

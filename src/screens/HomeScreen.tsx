@@ -94,20 +94,24 @@ export function HomeScreen() {
    *  para no mostrar “Escoge tu mascota” un frame. El CTA solo sale cuando
    *  sabemos que no hay una. */
   const displayPet = useMemo((): PetView | undefined => {
-    if (pet?.species && pet.name) return pet
-    if (profile?.petSpecies && profile.petName) {
-      return {
-        species: profile.petSpecies,
-        name: profile.petName,
-        stage: pet?.stage ?? 1,
-        mood: pet?.mood ?? 'ok',
-        weeksMet: pet?.weeksMet ?? 0,
-        skipDays: pet?.skipDays ?? 0,
-        goal: pet?.goal ?? 0,
-      }
-    }
-    return pet
-  }, [pet, profile])
+    const base =
+      pet?.species && pet.name
+        ? pet
+        : profile?.petSpecies && profile.petName
+          ? {
+              species: profile.petSpecies,
+              name: profile.petName,
+              stage: pet?.stage ?? 1,
+              mood: pet?.mood ?? 'skip1',
+              weeksMet: pet?.weeksMet ?? 0,
+              skipDays: pet?.skipDays ?? 0,
+              goal: pet?.goal ?? 0,
+            }
+          : pet
+    if (!base?.species || !base.name) return base
+    if (base.mood === 'broken') return base
+    return { ...base, mood: checkedInToday ? 'ok' : 'skip1' }
+  }, [pet, profile, checkedInToday])
   const petReady = petLoaded || !profile?.petSpecies
 
   if (!profile) return null

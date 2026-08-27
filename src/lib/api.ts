@@ -151,10 +151,10 @@ export interface Streaks {
   goal: number
 }
 
-/** Evolución 0–5. El 5 es el tope: más semanas cumplidas no cambian el cuerpo. */
+/** Evolución 0–5. Semanas consecutivas cumpliendo la meta. Si fallas, vuelve a 0. */
 export type PetStage = 0 | 1 | 2 | 3 | 4 | 5
 
-/** Ánimo encima de la evolución. `broken` gana si se rompió la racha semanal. */
+/** `ok` si ya marcaste hoy, `skip1` si no. `broken` si no llegaste a la meta. */
 export type PetMood = 'ok' | 'skip1' | 'skip2' | 'broken'
 
 export interface PetView {
