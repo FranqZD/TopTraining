@@ -31,7 +31,6 @@ export function FeedList({
   const [loading, setLoading] = useState(true)
   const [exhausted, setExhausted] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
-  const [memberCount, setMemberCount] = useState<number | null>(null)
   const [canVote, setCanVote] = useState(false)
   const sentinel = useRef<HTMLDivElement>(null)
 
@@ -44,7 +43,6 @@ export function FeedList({
         setCursor(page.nextCursor)
         setExhausted(page.nextCursor === null)
         setCanVote(page.canVote)
-        if (!from) setMemberCount(page.memberCount)
       } catch {
         if (!from) setItems([])
         setExhausted(true)
@@ -60,7 +58,6 @@ export function FeedList({
     setCursor(null)
     setExhausted(false)
     setOpenId(null)
-    setMemberCount(null)
     setCanVote(false)
     void fetchPage(null)
   }, [sourceKey, fetchPage])
@@ -111,7 +108,6 @@ export function FeedList({
                 onOpen={() => setOpenId(item.id)}
                 onAuthor={onAuthor}
                 onVoted={onVoted}
-                memberCount={memberCount}
                 canVote={canVote}
               />
             ))}

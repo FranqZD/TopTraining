@@ -177,7 +177,7 @@ export interface FeedPage {
   nextCursor: string | null
   /** false si todavía no entrenaste hoy: sin entrenar no se vota. */
   canVote: boolean
-  /** Gente del grupo. null fuera de un grupo: la barra de aura se muestra llena. */
+  /** Gente del grupo. null fuera de un grupo. */
   memberCount: number | null
 }
 

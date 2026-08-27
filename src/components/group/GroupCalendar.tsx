@@ -257,14 +257,12 @@ function DaySheet({ groupId, day, onClose }: { groupId: string; day: string | nu
   const [items, setItems] = useState<FeedItem[]>([])
   const [loading, setLoading] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
-  const [memberCount, setMemberCount] = useState<number | null>(null)
   const [canVote, setCanVote] = useState(false)
 
   useEffect(() => {
     if (!day) {
       setItems([])
       setOpenId(null)
-      setMemberCount(null)
       setCanVote(false)
       return
     }
@@ -274,7 +272,6 @@ function DaySheet({ groupId, day, onClose }: { groupId: string; day: string | nu
       .get<FeedPage>(`/groups/${groupId}/feed?${query}`)
       .then((page) => {
         setItems(page.items)
-        setMemberCount(page.memberCount)
         setCanVote(page.canVote)
       })
       .catch(() => setItems([]))
@@ -307,7 +304,6 @@ function DaySheet({ groupId, day, onClose }: { groupId: string; day: string | nu
                   navigate(`/u/${userId}`)
                 }}
                 onVoted={onVoted}
-                memberCount={memberCount}
                 canVote={canVote}
               />
             ))}

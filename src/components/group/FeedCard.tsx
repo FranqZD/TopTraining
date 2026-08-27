@@ -9,8 +9,8 @@ import { VoteBar } from './VoteBar'
  * Una tarjeta del feed. La misma pieza se usa en el scroll del grupo y al
  * abrir un día del calendario: si se viera distinto, el calendario mentiría.
  *
- * La barra se llena en verde (aura) y rojo (laura) según los votos del
- * grupo. Fuera de un grupo, se llena con la proporción de aura vs. laura.
+ * La barra es la proporción de los votos que ya hay: un aura sola llena
+ * todo de verde; uno de cada, mitad y mitad. Sin votos, queda vacía.
  */
 export function FeedCard({
   item,
@@ -18,7 +18,6 @@ export function FeedCard({
   onOpen,
   onAuthor,
   onVoted,
-  memberCount,
   canVote = false,
 }: {
   item: FeedItem
@@ -27,8 +26,6 @@ export function FeedCard({
   /** Si está, el nombre y el avatar abren el feed de esa persona. */
   onAuthor?: (userId: string) => void
   onVoted?: (checkInId: string, result: VoteResult) => void
-  /** null / undefined: no hay grupo, la barra va llena. */
-  memberCount?: number | null
   /** Si todavía no entrenó hoy, mira pero no vota. */
   canVote?: boolean
 }) {
@@ -36,9 +33,8 @@ export function FeedCard({
   const aura = item.votes?.like ?? 0
   const laura = item.votes?.laura ?? 0
   const voted = aura + laura
-  const capacity = memberCount && memberCount > 0 ? memberCount : Math.max(voted, 1)
-  const auraPct = (aura / capacity) * 100
-  const lauraPct = (laura / capacity) * 100
+  const auraPct = voted > 0 ? (aura / voted) * 100 : 0
+  const lauraPct = voted > 0 ? (laura / voted) * 100 : 0
 
   const identity = (
     <>
@@ -90,7 +86,7 @@ export function FeedCard({
           role="progressbar"
           aria-label="Aura y Laura"
           aria-valuemin={0}
-          aria-valuemax={capacity}
+          aria-valuemax={voted}
           aria-valuenow={voted}
         >
           {auraPct > 0 && (
