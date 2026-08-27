@@ -1,14 +1,16 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { FeedList } from './FeedList'
+import { PostComposer } from './PostComposer'
 import { api, localDay, type FeedPage } from '../../lib/api'
 
 /**
- * Feed del grupo: los check-ins de todos, del más nuevo al más viejo.
+ * Feed del grupo: entrenos y posts de texto, del más nuevo al más viejo.
  * Tocar a alguien abre su feed personal.
  */
-export function GroupFeed({ groupId }: { groupId: string }) {
+export function GroupFeed({ groupId, isOwner = false }: { groupId: string; isOwner?: boolean }) {
   const navigate = useNavigate()
+  const [epoch, setEpoch] = useState(0)
 
   const loadPage = useCallback(
     async (from: string | null) => {
@@ -20,12 +22,17 @@ export function GroupFeed({ groupId }: { groupId: string }) {
   )
 
   return (
-    <FeedList
-      sourceKey={groupId}
-      loadPage={loadPage}
-      empty="Todavía no ha entrenado nadie."
-      emptyHint="Sé el primero y luego présumeles a todos."
-      onAuthor={(userId) => navigate(`/u/${userId}`)}
-    />
+    <div className="flex flex-col gap-5">
+      <PostComposer groupId={groupId} onPosted={() => setEpoch((n) => n + 1)} />
+      <FeedList
+        sourceKey={`${groupId}:${epoch}`}
+        loadPage={loadPage}
+        empty="Todavía no hay nada acá."
+        emptyHint="Marcá un entreno o escribí un post."
+        onAuthor={(userId) => navigate(`/u/${userId}`)}
+        groupId={groupId}
+        canModerate={isOwner}
+      />
+    </div>
   )
 }

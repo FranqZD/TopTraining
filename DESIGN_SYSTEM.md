@@ -220,12 +220,20 @@ No hay paso 3. Ningún componente se toca.
    todo grita, nada grita.
 3. **Mínimo teclado.** Si las opciones son acotadas → `<ChoiceGroup />` (chips
    táctiles), toggles o selectores. El teclado queda para nombre, peso, texto
-   de check-in, comentario y búsqueda de usuario. Nada más.
+   de check-in, post del grupo, comentario y búsqueda de usuario. Nada más.
 4. **Todo lo tocable ≥ 44px**, con `.pressable`.
 5. **`.notch` con moderación:** una o dos piezas por pantalla, o deja de significar algo.
 6. **La voz también es sistema:** títulos directos y en segunda persona; el
    humor va en la bajada o en el hint, nunca en botones de acción destructiva.
 7. **Números siempre con `.num`.** Un número de racha en fuente de cuerpo se ve mal.
+8. **Parche visible, nota del parche.** Si quien ya usa la app va a ver algo
+   nuevo, hay un bloque arriba de `RELEASES` en `src/whats-new/releases.ts`.
+   Sin eso, la pantalla de "hay de nuevo" no se abre. Ver §10.
+9. **Si le pasa a otra persona, se avisa — o se decide que no.** Un hecho
+   social (entreno, comentario, voto, solicitud) sale por `notify.ts` con
+   `kind`, interruptor en Ajustes y `fireAndForget` después de responder.
+   Si no debe pitar (un post de texto en el grupo, v1), eso se declara, no
+   se "olvida". Ver §10.
 
 ---
 
@@ -267,7 +275,13 @@ Referencia de que el sistema aguanta pantallas reales:
   numerados, porque es lo único que se puede hacer cuando el sistema no ofrece
   ninguna API para instalar. Los `Switch` de qué avisos recibir aparecen recién
   con los avisos activados, y ninguno se pinta de acento: son cinco juntos y el
-  acento se usa poco.
+  acento se usa poco. Qué se manda, a quién y con qué `kind` está en §10:
+  acá solo vive el permiso y los interruptores.
+- **Notas del parche:** `/whats-new` se abre sola cuando el dispositivo no
+  vio el último `RELEASES[0].id`. Una `Card` por parche, ícono lucide en un
+  recuadro de `ink-850`, sin acento en cada fila. Desde Ajustes se puede
+  volver a leer. El onboarding marca todo visto: quien entra por primera
+  vez no se come el historial.
 - **Ícono de la app:** disco rojo (`#EC3013`) con la marca blanca sobre
   carbón (`#201E1D`). Fuente: `public/icon-app-black.svg` y los PNG del
   mismo nombre (`icon-180`, `icon-192`, `icon-512`, …).
@@ -280,7 +294,90 @@ Referencia de que el sistema aguanta pantallas reales:
 
 ---
 
-## 10. Pendientes conocidos
+## 10. Al cerrar una feature: parches y avisos
+
+Esto no es visual. Si se salta, quien ya usa la app no se entera, o se
+entera por un push que no pidió. **Cerrar una feature es: código + nota del
+parche + (avisar o declarar que no).**
+
+### 11.1 Notas del parche
+
+Catálogo: `src/whats-new/releases.ts`. Visto: `localStorage` clave
+`toptraining.seenRelease` (`src/whats-new/seen.ts`). Pantalla:
+`WhatsNewScreen`. Se abre sola desde `RequireAuth` si hay ids más nuevas
+que la guardada.
+
+**Cuándo sí:** cambio que se ve o se siente (pantalla, feed, voto, foto,
+post, recap, aviso). Un toque, un número, un texto nuevo.
+
+**Cuándo no:** refactor, schema interno, seed, cosa que el usuario no
+puede percibir.
+
+Pasos:
+
+1. Copiar un bloque **arriba** de `RELEASES` (lo más nuevo primero).
+2. `id` que no se haya usado. La fecha alcanza (`2026.08.27`); el mismo
+   día, un sufijo (`2026.08.27-posts`).
+3. Voz de producto: segunda persona, corta, sin changelog de ingeniería.
+4. Ícono: uno de `ReleaseIcon`. Si hace falta uno nuevo, se agrega al
+   tipo **y** al mapa `ICONS` de `WhatsNewScreen` (lucide, grosor 2.5).
+5. No tocar `seen.ts`. Quien ya vio el parche anterior recibe solo los
+   bloques que quedaron arriba de su id.
+
+Quien termina el onboarding llama `markReleasesSeen()`: no hay que
+“protegerlo” a mano.
+
+### 11.2 Notificaciones
+
+Hay dos relojes distintos:
+
+| Origen | Archivo | Ejemplos |
+|---|---|---|
+| La gente | `server/src/notify.ts` | entreno, comentario, aura/laura, solicitud |
+| El cron | `server/src/scheduler.ts` | recordatorio de entrenar (`nudge`) |
+
+Los sociales se lanzan con `fireAndForget(...)` **después** de responder
+el HTTP: que el push falle no puede convertir un comentario guardado en
+un error en pantalla. Nadie se avisa a sí mismo. Sacar, mover o borrar
+no manda nada — solo el hecho de poner.
+
+Cada tipo tiene interruptor en el perfil y en Ajustes (`PushSettings`):
+
+| `kind` | Campo | Cuándo |
+|---|---|---|
+| `nudge` | `notifyNudge` | No marcó en su ventana (job) |
+| `post` | `notifyPosts` | Alguien de tus grupos marcó un **entreno** |
+| `comment` | `notifyComments` | Comentaron tu entreno |
+| `vote` | `notifyVotes` | Te dieron aura o laura |
+| `friend` | `notifyFriends` | Te mandaron solicitud |
+| `test` | — | Lo pide el usuario con un botón |
+
+El filtro vive en `sendToUsers(userIds, payload, kind)`: **sin `kind` no
+compila**, así un aviso nuevo no puede olvidarse del interruptor.
+
+**Si la feature es un hecho que le pasa a otra persona**, o se avisa o se
+escribe que no. Un post de texto en el grupo (v1) no pita: no es un
+entreno y no usa `notifyPosts`. Si más adelante avisara, sería un `kind`
+nuevo (o reusar uno con copy claro), columna en `User`, default `true` en
+`ensure-schema.ts`, fila en Ajustes, y `fireAndForget` en el POST.
+
+Alta de un `kind` social, en este orden:
+
+1. `PREF_FIELD` en `push.ts` + campo `notify…` en Prisma / `ensure-schema`
+   (default `true`, para no silenciar a quien ya estaba).
+2. Función en `notify.ts` (título corto, `tag` que agrupe lo repetido,
+   `url` a donde hay que ir).
+3. `fireAndForget(...)` en el handler, **después** del `res.json`.
+4. Fila en `PushSettings` (lucide, sin acento en el switch).
+5. Tipo `NotifyKey` en `src/lib/api.ts`.
+
+El permiso del navegador **nunca** se pide al abrir la app: siempre
+detrás de un botón, y en iOS recién con la PWA instalada. Eso no se
+toca al sumar un tipo de aviso.
+
+---
+
+## 11. Pendientes conocidos
 
 - Fuente servida desde Google Fonts. Antes de la PWA offline conviene
   auto-hospedarla (`@fontsource-variable/archivo`) para no depender de la red.

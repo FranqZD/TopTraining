@@ -169,6 +169,8 @@ export const EMPTY_VOTES: VoteTally = { like: 0, laura: 0, mine: [] }
 
 export interface FeedItem {
   id: string
+  /** Un post de texto no se vota ni se comenta. Si falta, es un entreno. */
+  kind?: 'checkin' | 'post'
   day: string
   note: string | null
   photoUrl: string | null
@@ -179,6 +181,10 @@ export interface FeedItem {
   author: Friend
   streaks: Streaks
   votes: VoteTally
+}
+
+export function isGroupPost(item: FeedItem): boolean {
+  return item.kind === 'post'
 }
 
 export interface FeedPage {

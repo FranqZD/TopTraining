@@ -267,7 +267,11 @@ export function GroupDetailScreen() {
         </section>
 
         <div className="pb-10">
-          {mode === 'feed' ? <GroupFeed groupId={group.id} /> : <GroupCalendar groupId={group.id} />}
+          {mode === 'feed' ? (
+            <GroupFeed groupId={group.id} isOwner={group.isOwner} />
+          ) : (
+            <GroupCalendar groupId={group.id} />
+          )}
         </div>
       </div>
 

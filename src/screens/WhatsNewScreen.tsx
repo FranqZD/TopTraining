@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router'
 import { motion } from 'motion/react'
-import { Bell, Camera, Columns2, EyeOff, Trophy } from 'lucide-react'
+import { Bell, Camera, Columns2, EyeOff, PenLine, Trophy } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Button, Card, CardLabel } from '../components/ui'
 import { RELEASES, type Release, type ReleaseIcon } from '../whats-new/releases'
@@ -12,6 +12,7 @@ const ICONS: Record<ReleaseIcon, ReactNode> = {
   ghost: <EyeOff size={20} strokeWidth={2.5} />,
   bar: <Columns2 size={20} strokeWidth={2.5} />,
   trophy: <Trophy size={20} strokeWidth={2.5} />,
+  pen: <PenLine size={20} strokeWidth={2.5} />,
 }
 
 /**

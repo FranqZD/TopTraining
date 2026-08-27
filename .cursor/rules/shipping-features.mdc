@@ -1,0 +1,37 @@
+---
+description: Al cerrar una feature, nota del parche y notificación (o declarar que no avisa).
+alwaysApply: true
+---
+
+# Cerrar una feature
+
+Detalle en `DESIGN_SYSTEM.md` §10. Sin esto, quien ya usa la app no se entera o recibe un push que no pidió.
+
+## Notas del parche
+
+Si el cambio se ve o se siente, copiá un bloque **arriba** de `RELEASES` en `src/whats-new/releases.ts`.
+
+- `id` nueva (fecha; el mismo día, un sufijo).
+- Voz de producto, segunda persona. No es un changelog de ingeniería.
+- Ícono nuevo: `ReleaseIcon` **y** el mapa `ICONS` de `WhatsNewScreen`.
+- No toques `seen.ts`. El onboarding ya marca todo visto.
+
+No hace falta nota en refactors, schema interno o seeds.
+
+## Notificaciones
+
+Hecho social → `fireAndForget` en `server/src/notify.ts` **después** de responder, con `kind` (sin `kind` no compila el filtro de Ajustes). Nadie se avisa a sí mismo. Deshacer no pita.
+
+| `kind` | Campo | Qué es |
+|---|---|---|
+| `nudge` | `notifyNudge` | Job de recordatorio |
+| `post` | `notifyPosts` | Check-in de un grupo (no un post de texto) |
+| `comment` | `notifyComments` | Comentario en tu entreno |
+| `vote` | `notifyVotes` | Aura o laura |
+| `friend` | `notifyFriends` | Solicitud |
+
+Un `kind` nuevo: `PREF_FIELD` → columna `notify…` default `true` → función en `notify.ts` → fila en `PushSettings` → `NotifyKey`.
+
+Si **no** debe avisar, decilo (v1 de posts de texto: no pita). No lo dejes implícito.
+
+El permiso del navegador nunca se pide al abrir la app.

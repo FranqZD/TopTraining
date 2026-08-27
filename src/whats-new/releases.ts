@@ -3,10 +3,11 @@
  * usuario no la vio, la pantalla de "hay de nuevo" se abre sola.
  *
  * Orden: lo más nuevo primero. Para un parche nuevo, copiá un bloque arriba
- * con una id que no se haya usado (la fecha alcanza).
+ * con una id que no se haya usado (la fecha alcanza; el mismo día, un sufijo).
+ * Checklist: DESIGN_SYSTEM.md §10.
  */
 
-export type ReleaseIcon = 'camera' | 'bell' | 'ghost' | 'bar' | 'trophy'
+export type ReleaseIcon = 'camera' | 'bell' | 'ghost' | 'bar' | 'trophy' | 'pen'
 
 export interface ReleaseItem {
   icon: ReleaseIcon
@@ -24,6 +25,19 @@ export interface Release {
 }
 
 export const RELEASES: Release[] = [
+  {
+    id: '2026.08.27-posts',
+    dateLabel: '27 ago 2026',
+    title: 'Posts en el grupo',
+    tagline: 'Decí algo sin marcar un entreno.',
+    items: [
+      {
+        icon: 'pen',
+        title: 'Escribí en el grupo',
+        detail: 'Un post de texto, sin votos ni comentarios. No cuenta como entreno.',
+      },
+    ],
+  },
   {
     id: '2026.08.27',
     dateLabel: '27 ago 2026',

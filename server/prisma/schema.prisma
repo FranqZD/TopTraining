@@ -59,6 +59,7 @@ model User {
   groupMemberships GroupMember[]
   comments         Comment[]
   votes            Vote[]
+  groupPosts       GroupPost[]
   pushSubscriptions PushSubscription[]
   pushLogs          PushLog[]
 
@@ -154,6 +155,7 @@ model Group {
   owner   User          @relation("GroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   members GroupMember[]
   recaps  GroupRecap[]
+  posts   GroupPost[]
 
   @@map("group")
 }
@@ -194,6 +196,23 @@ model GroupMember {
   @@unique([groupId, userId])
   @@index([userId])
   @@map("group_member")
+}
+
+/// Aviso de texto en el grupo. No es un entreno: no suma a rachas ni se vota.
+model GroupPost {
+  id        String   @id @default(cuid())
+  groupId   String
+  userId    String
+  body      String
+  /// Día local de quien lo publicó, "YYYY-MM-DD". Agrupa el feed.
+  day       String
+  createdAt DateTime @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, day, createdAt])
+  @@map("group_post")
 }
 
 model CheckIn {

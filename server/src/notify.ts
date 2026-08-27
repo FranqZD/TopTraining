@@ -3,7 +3,7 @@ import { sendToUser, sendToUsers } from './push.js'
 
 /**
  * Avisos que dispara la gente, no el reloj (el recordatorio de entrenar vive
- * en scheduler.ts).
+ * en scheduler.ts). Checklist de alta: DESIGN_SYSTEM.md §10.
  *
  * Dos reglas que valen para todos:
  *

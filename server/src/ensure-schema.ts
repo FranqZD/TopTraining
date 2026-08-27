@@ -40,6 +40,20 @@ export async function ensureSchema(): Promise<void> {
       CREATE INDEX IF NOT EXISTS "vote_checkInId_idx" ON "vote"("checkInId");
     `)
 
+    await client.executeMultiple(`
+      CREATE TABLE IF NOT EXISTS "group_post" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "groupId" TEXT NOT NULL,
+        "userId" TEXT NOT NULL,
+        "body" TEXT NOT NULL,
+        "day" TEXT NOT NULL,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "group_post_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "group" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT "group_post_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS "group_post_groupId_day_createdAt_idx" ON "group_post"("groupId", "day", "createdAt");
+    `)
+
     // Interruptores de avisos: columnas nuevas sobre una tabla que ya tiene
     // gente adentro. Todas arrancan prendidas, así nadie deja de recibir lo
     // que venía recibiendo.

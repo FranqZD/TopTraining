@@ -649,6 +649,7 @@ app.get('/api/users/:id/feed', requireAuth, async (req, res) => {
     streaks,
     items: page.map((row) => ({
       id: row.id,
+      kind: 'checkin' as const,
       day: row.day,
       note: row.note,
       ...feedPhotoFields(row),
@@ -950,10 +951,46 @@ app.delete('/api/groups/:id', requireAuth, async (req, res) => {
    Feed y calendario del grupo
    ------------------------------------------------------------------------- */
 
+/** El día lo manda el cliente: lo que importa es su día local, no el del server. */
+const DAY = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato esperado YYYY-MM-DD')
+
+type FeedCursor = { kind: 'checkin' | 'post'; id: string; day: string; createdAt: Date }
+
+function encodeFeedCursor(item: { kind: 'checkin' | 'post'; id: string }): string {
+  return `${item.kind}:${item.id}`
+}
+
+async function decodeFeedCursor(raw?: string): Promise<FeedCursor | null> {
+  if (!raw) return null
+  if (raw.startsWith('post:')) {
+    const row = await prisma.groupPost.findUnique({
+      where: { id: raw.slice(5) },
+      select: { id: true, day: true, createdAt: true },
+    })
+    return row ? { kind: 'post', ...row } : null
+  }
+  const id = raw.startsWith('checkin:') ? raw.slice(8) : raw
+  const row = await prisma.checkIn.findUnique({
+    where: { id },
+    select: { id: true, day: true, createdAt: true },
+  })
+  return row ? { kind: 'checkin', ...row } : null
+}
+
+/** Lo que va después en el feed: día más viejo, o el mismo día más temprano. */
+function olderThanCursor(cursor: FeedCursor) {
+  return {
+    OR: [
+      { day: { lt: cursor.day } },
+      { AND: [{ day: cursor.day }, { createdAt: { lt: cursor.createdAt } }] },
+      { AND: [{ day: cursor.day }, { createdAt: cursor.createdAt }, { id: { lt: cursor.id } }] },
+    ],
+  }
+}
+
 /**
- * Feed del grupo: check-ins de todos los miembros, del más nuevo al más viejo,
- * paginado con cursor (no con offset, que se desordena cuando alguien marca
- * mientras vos scrolleás).
+ * Feed del grupo: check-ins de todos los miembros y posts de texto, del más
+ * nuevo al más viejo, paginado con cursor.
  */
 app.get('/api/groups/:id/feed', requireAuth, async (req, res) => {
   const groupId = String(req.params.id)
@@ -969,57 +1006,187 @@ app.get('/api/groups/:id/feed', requireAuth, async (req, res) => {
   }
 
   const limit = Math.min(Math.max(Number(req.query.limit ?? 25) || 25, 1), day ? 50 : 30)
-  const cursor = req.query.cursor ? String(req.query.cursor) : undefined
+  const cursor = await decodeFeedCursor(req.query.cursor ? String(req.query.cursor) : undefined)
+  const older = cursor ? olderThanCursor(cursor) : undefined
 
   const members = await prisma.groupMember.findMany({ where: { groupId }, select: { userId: true } })
   const memberIds = members.map((member) => member.userId)
 
-  const rows = await prisma.checkIn.findMany({
-    where: { userId: { in: memberIds }, ...(day ? { day } : {}) },
-    // Ordena por el día ENTRENADO, no por cuándo se creó la fila: si alguien
-    // marca hoy un rato tarde tiene que aparecer arriba igual.
-    orderBy: [{ day: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
-    take: limit + 1,
-    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-    include: { user: { select: FRIEND_SELECT }, _count: { select: { comments: true } } },
-  })
-
-  const hasMore = rows.length > limit
-  const page = hasMore ? rows.slice(0, limit) : rows
-
-  // La racha se calcula solo para los autores que aparecen en esta página.
-  const today = todayFor(req)
-  const authorIds = [...new Set(page.map((row) => row.userId))]
-  const [history, profiles] = await Promise.all([
+  const [checkRows, postRows] = await Promise.all([
     prisma.checkIn.findMany({
-      where: { userId: { in: authorIds }, day: { gte: shiftDay(today, -STREAK_WINDOW_DAYS) } },
-      select: { userId: true, day: true },
+      where: {
+        userId: { in: memberIds },
+        ...(day ? { day } : {}),
+        ...(older ?? {}),
+      },
+      orderBy: [{ day: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
+      include: { user: { select: FRIEND_SELECT }, _count: { select: { comments: true } } },
     }),
-    prisma.user.findMany({ where: { id: { in: authorIds } }, select: { id: true, weeklyFrequency: true } }),
+    // El calendario abre un día de entrenos: los posts no van ahí.
+    day
+      ? Promise.resolve([])
+      : prisma.groupPost.findMany({
+          where: { groupId, ...(older ?? {}) },
+          orderBy: [{ day: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+          take: limit + 1,
+          include: { user: { select: FRIEND_SELECT } },
+        }),
+  ])
+
+  const merged = [
+    ...checkRows.map((row) => ({ kind: 'checkin' as const, day: row.day, createdAt: row.createdAt, id: row.id, row })),
+    ...postRows.map((row) => ({ kind: 'post' as const, day: row.day, createdAt: row.createdAt, id: row.id, row })),
+  ].sort(
+    (a, b) =>
+      b.day.localeCompare(a.day) ||
+      b.createdAt.getTime() - a.createdAt.getTime() ||
+      b.id.localeCompare(a.id),
+  )
+
+  const hasMore = merged.length > limit
+  const page = hasMore ? merged.slice(0, limit) : merged
+
+  const today = todayFor(req)
+  const authorIds = [...new Set(page.map((item) => item.row.userId))]
+  const checkInIds = page.filter((item) => item.kind === 'checkin').map((item) => item.id)
+  const [history, profiles, tallies, canVote] = await Promise.all([
+    authorIds.length
+      ? prisma.checkIn.findMany({
+          where: { userId: { in: authorIds }, day: { gte: shiftDay(today, -STREAK_WINDOW_DAYS) } },
+          select: { userId: true, day: true },
+        })
+      : Promise.resolve([]),
+    authorIds.length
+      ? prisma.user.findMany({ where: { id: { in: authorIds } }, select: { id: true, weeklyFrequency: true } })
+      : Promise.resolve([]),
+    votesForCheckIns(checkInIds, req.userId!),
+    trainedOn(req.userId!, today),
   ])
   const daysByUser = groupDaysByUser(history)
   const goalByUser = new Map(profiles.map((profile) => [profile.id, profile.weeklyFrequency ?? 0]))
-  const [tallies, canVote] = await Promise.all([
-    votesForCheckIns(page.map((row) => row.id), req.userId!),
-    trainedOn(req.userId!, today),
-  ])
 
   res.json({
-    items: page.map((row) => ({
-      id: row.id,
-      day: row.day,
-      note: row.note,
-      ...feedPhotoFields(row),
-      createdAt: row.createdAt,
-      commentCount: row._count.comments,
-      author: row.user,
-      streaks: computeStreaks(daysByUser.get(row.userId) ?? [], goalByUser.get(row.userId) ?? 0, today),
-      votes: tallies.get(row.id) ?? emptyTally(),
-    })),
-    nextCursor: hasMore ? page[page.length - 1]!.id : null,
+    items: page.map((item) => {
+      const streaks = computeStreaks(daysByUser.get(item.row.userId) ?? [], goalByUser.get(item.row.userId) ?? 0, today)
+      if (item.kind === 'post') {
+        const post = item.row
+        return {
+          id: post.id,
+          kind: 'post' as const,
+          day: post.day,
+          note: post.body,
+          photoUrl: null,
+          photos: [],
+          createdAt: post.createdAt,
+          commentCount: 0,
+          author: post.user,
+          streaks,
+          votes: emptyTally(),
+        }
+      }
+      const row = item.row
+      return {
+        id: row.id,
+        kind: 'checkin' as const,
+        day: row.day,
+        note: row.note,
+        ...feedPhotoFields(row),
+        createdAt: row.createdAt,
+        commentCount: row._count.comments,
+        author: row.user,
+        streaks,
+        votes: tallies.get(row.id) ?? emptyTally(),
+      }
+    }),
+    nextCursor: hasMore ? encodeFeedCursor(page[page.length - 1]!) : null,
     canVote,
     memberCount: memberIds.length,
   })
+})
+
+const groupPostSchema = z.object({
+  body: z.string().trim().min(1).max(280),
+  day: DAY,
+})
+
+app.post('/api/groups/:id/posts', requireAuth, async (req, res) => {
+  const groupId = String(req.params.id)
+  if (!(await membershipOf(groupId, req.userId!))) {
+    res.status(404).json({ error: 'Ese grupo no existe o no eres miembro' })
+    return
+  }
+
+  const parsed = groupPostSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: 'El post no puede estar vacío' })
+    return
+  }
+
+  const post = await prisma.groupPost.create({
+    data: {
+      groupId,
+      userId: req.userId!,
+      body: parsed.data.body,
+      day: parsed.data.day,
+    },
+    include: { user: { select: FRIEND_SELECT } },
+  })
+
+  const today = todayFor(req)
+  const history = await prisma.checkIn.findMany({
+    where: { userId: post.userId, day: { gte: shiftDay(today, -STREAK_WINDOW_DAYS) } },
+    select: { day: true },
+  })
+  const profile = await prisma.user.findUnique({
+    where: { id: post.userId },
+    select: { weeklyFrequency: true },
+  })
+
+  res.status(201).json({
+    id: post.id,
+    kind: 'post',
+    day: post.day,
+    note: post.body,
+    photoUrl: null,
+    photos: [],
+    createdAt: post.createdAt,
+    commentCount: 0,
+    author: post.user,
+    streaks: computeStreaks(
+      history.map((row) => row.day),
+      profile?.weeklyFrequency ?? 0,
+      today,
+    ),
+    votes: emptyTally(),
+  })
+})
+
+app.delete('/api/groups/:id/posts/:postId', requireAuth, async (req, res) => {
+  const groupId = String(req.params.id)
+  const membership = await membershipOf(groupId, req.userId!)
+  if (!membership) {
+    res.status(404).json({ error: 'Ese grupo no existe o no eres miembro' })
+    return
+  }
+
+  const post = await prisma.groupPost.findFirst({
+    where: { id: String(req.params.postId), groupId },
+  })
+  if (!post) {
+    res.status(404).json({ error: 'Ese post no existe' })
+    return
+  }
+
+  const group = await prisma.group.findUnique({ where: { id: groupId }, select: { ownerId: true } })
+  const canDelete = post.userId === req.userId || group?.ownerId === req.userId
+  if (!canDelete) {
+    res.status(403).json({ error: 'No puedes borrar ese post' })
+    return
+  }
+
+  await prisma.groupPost.delete({ where: { id: post.id } })
+  res.json({ ok: true })
 })
 
 /**
@@ -1147,9 +1314,6 @@ app.get('/api/groups/:id/recap', requireAuth, async (req, res) => {
 /* ---------------------------------------------------------------------------
    Check-ins — la acción más importante de la app
    ------------------------------------------------------------------------- */
-
-/** El día lo manda el cliente: lo que importa es su día local, no el del server. */
-const DAY = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato esperado YYYY-MM-DD')
 
 const checkInPhotoSchema = z.object({
   url: z.string().url(),

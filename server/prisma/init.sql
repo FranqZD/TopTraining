@@ -164,6 +164,18 @@ CREATE INDEX IF NOT EXISTS "push_subscription_userId_idx" ON "push_subscription"
 CREATE UNIQUE INDEX IF NOT EXISTS "push_log_userId_day_kind_key" ON "push_log"("userId", "day", "kind");
 CREATE INDEX IF NOT EXISTS "comment_checkInId_createdAt_idx" ON "comment"("checkInId", "createdAt");
 
+CREATE TABLE IF NOT EXISTS "group_post" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "groupId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "body" TEXT NOT NULL,
+    "day" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "group_post_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "group" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "group_post_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+CREATE INDEX IF NOT EXISTS "group_post_groupId_day_createdAt_idx" ON "group_post"("groupId", "day", "createdAt");
+
 CREATE TABLE IF NOT EXISTS "vote" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "checkInId" TEXT NOT NULL,
