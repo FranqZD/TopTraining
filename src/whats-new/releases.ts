@@ -26,6 +26,19 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    id: '2026.08.27-group-gear',
+    dateLabel: '27 ago 2026',
+    title: 'El grupo, en el engranaje',
+    tagline: 'Código, tu meta y los miembros ya no ocupan el feed.',
+    items: [
+      {
+        icon: 'lock',
+        title: 'Un toque en ajustes',
+        detail: 'Si no eres dueño, ves el código, tu meta y quién está. Si lo eres, el panel de siempre.',
+      },
+    ],
+  },
+  {
     id: '2026.08.27-pets',
     dateLabel: '27 ago 2026',
     title: 'Tu mascota',
