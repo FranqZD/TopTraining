@@ -2,13 +2,21 @@ import { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { FeedList } from './FeedList'
 import { PostComposer } from './PostComposer'
-import { api, localDay, type FeedPage } from '../../lib/api'
+import { api, localDay, type FeedPage, type VoteWallet } from '../../lib/api'
 
 /**
  * Feed del grupo: entrenos y posts de texto, del más nuevo al más viejo.
  * Tocar a alguien abre su feed personal.
  */
-export function GroupFeed({ groupId, isOwner = false }: { groupId: string; isOwner?: boolean }) {
+export function GroupFeed({
+  groupId,
+  isOwner = false,
+  onWallet,
+}: {
+  groupId: string
+  isOwner?: boolean
+  onWallet?: (wallet?: VoteWallet) => void
+}) {
   const navigate = useNavigate()
   const [epoch, setEpoch] = useState(0)
 
@@ -32,6 +40,7 @@ export function GroupFeed({ groupId, isOwner = false }: { groupId: string; isOwn
         onAuthor={(userId) => navigate(`/u/${userId}`)}
         groupId={groupId}
         canModerate={isOwner}
+        onWallet={onWallet}
       />
     </div>
   )

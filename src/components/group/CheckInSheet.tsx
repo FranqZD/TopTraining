@@ -132,25 +132,32 @@ export function CheckInSheet({
             </Button>
           )}
 
-          <VoteBar
-            checkInId={detail.id}
-            votes={detail.votes ?? EMPTY_VOTES}
-            canVote={detail.canVote}
-            wallet={detail.wallet}
-            onVoted={(result) => {
-              setDetail((current) =>
-                current
-                  ? {
-                      ...current,
-                      votes: result.votes,
-                      wallet: result.wallet ?? current.wallet,
-                      canVote: result.wallet ? result.wallet.budget > 0 : current.canVote,
-                    }
-                  : current,
-              )
-              onVoted?.(detail.id, result)
-            }}
-          />
+          {mine ? (
+            <div className="flex items-baseline gap-3 leading-none">
+              <p className="num text-headline text-success">{detail.votes?.like ?? 0}</p>
+              <p className="num text-headline text-danger">{detail.votes?.laura ?? 0}</p>
+            </div>
+          ) : (
+            <VoteBar
+              checkInId={detail.id}
+              votes={detail.votes ?? EMPTY_VOTES}
+              canVote={detail.canVote}
+              wallet={detail.wallet}
+              onVoted={(result) => {
+                setDetail((current) =>
+                  current
+                    ? {
+                        ...current,
+                        votes: result.votes,
+                        wallet: result.wallet ?? current.wallet,
+                        canVote: result.wallet ? result.wallet.budget > 0 : current.canVote,
+                      }
+                    : current,
+                )
+                onVoted?.(detail.id, result)
+              }}
+            />
+          )}
 
           {/* --- Comentarios --- */}
           <div className="flex flex-col gap-3 pt-2">

@@ -49,7 +49,8 @@ export function FeedCard({
   const voted = aura + laura
   const auraPct = voted > 0 ? (aura / voted) * 100 : 0
   const lauraPct = voted > 0 ? (laura / voted) * 100 : 0
-  const canDelete = post && Boolean(onDelete) && (canModerate || profile?.id === item.author.id)
+  const own = Boolean(profile && profile.id === item.author.id)
+  const canDelete = post && Boolean(onDelete) && (canModerate || own)
 
   const identity = (
     <>
@@ -163,13 +164,15 @@ export function FeedCard({
 
         {!post && (
           <>
-            <VoteBar
-              checkInId={item.id}
-              votes={item.votes ?? EMPTY_VOTES}
-              canVote={canVote}
-              wallet={wallet}
-              onVoted={(result) => onVoted?.(item.id, result)}
-            />
+            {!own && (
+              <VoteBar
+                checkInId={item.id}
+                votes={item.votes ?? EMPTY_VOTES}
+                canVote={canVote}
+                wallet={wallet}
+                onVoted={(result) => onVoted?.(item.id, result)}
+              />
+            )}
 
             <button
               type="button"

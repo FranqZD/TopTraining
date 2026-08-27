@@ -26,6 +26,24 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    id: '2026.08.27-wallet',
+    dateLabel: '27 ago 2026',
+    title: 'Cuántas te quedan',
+    tagline: 'En el grupo ves tus auras y lauras. A vos no te votás.',
+    items: [
+      {
+        icon: 'bar',
+        title: 'Te quedan tantas',
+        detail: 'Arriba del feed ves cuántas auras y lauras te faltan por dar.',
+      },
+      {
+        icon: 'lock',
+        title: 'Sin votarte a vos',
+        detail: 'Aura y laura son para los demás. En tu propio entreno no hay botones.',
+      },
+    ],
+  },
+  {
     id: '2026.08.27-profile',
     dateLabel: '27 ago 2026',
     title: 'Tu perfil desde Inicio',

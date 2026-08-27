@@ -27,7 +27,13 @@ const GRID = 'grid grid-cols-[repeat(7,minmax(0,1fr))_2.75rem] gap-1'
  * columna son llamas — una por cada persona que cumplió su meta esa semana.
  * Tocar un día abre el feed de ese día, no el de una sola persona.
  */
-export function GroupCalendar({ groupId }: { groupId: string }) {
+export function GroupCalendar({
+  groupId,
+  onWallet,
+}: {
+  groupId: string
+  onWallet?: (wallet?: VoteWallet) => void
+}) {
   const [month, setMonth] = useState(localMonth())
   const [data, setData] = useState<GroupCalendarData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -42,6 +48,14 @@ export function GroupCalendar({ groupId }: { groupId: string }) {
       .catch(() => setData(null))
       .finally(() => setLoading(false))
   }, [groupId, month])
+
+  useEffect(() => {
+    const query = new URLSearchParams({ limit: '1', today: localDay() })
+    api
+      .get<FeedPage>(`/groups/${groupId}/feed?${query}`)
+      .then((page) => onWallet?.(page.wallet))
+      .catch(() => {})
+  }, [groupId, onWallet])
 
   const byDay = useMemo(() => new Map((data?.days ?? []).map((entry) => [entry.day, entry])), [data])
   const today = localDay()
@@ -119,7 +133,7 @@ export function GroupCalendar({ groupId }: { groupId: string }) {
         </>
       )}
 
-      <DaySheet groupId={groupId} day={openDay} onClose={() => setOpenDay(null)} />
+      <DaySheet groupId={groupId} day={openDay} onClose={() => setOpenDay(null)} onWallet={onWallet} />
     </div>
   )
 }
@@ -253,7 +267,17 @@ function Legend({
  * Feed de un día: lo que subió cada quien. Misma tarjeta que el feed del
  * grupo, para que abrir el calendario no se sienta como otra app.
  */
-function DaySheet({ groupId, day, onClose }: { groupId: string; day: string | null; onClose: () => void }) {
+function DaySheet({
+  groupId,
+  day,
+  onClose,
+  onWallet,
+}: {
+  groupId: string
+  day: string | null
+  onClose: () => void
+  onWallet?: (wallet?: VoteWallet) => void
+}) {
   const navigate = useNavigate()
   const [items, setItems] = useState<FeedItem[]>([])
   const [loading, setLoading] = useState(false)
@@ -277,14 +301,18 @@ function DaySheet({ groupId, day, onClose }: { groupId: string; day: string | nu
         setItems(page.items)
         setCanVote(page.canVote)
         setWallet(page.wallet)
+        onWallet?.(page.wallet)
       })
       .catch(() => setItems([]))
       .finally(() => setLoading(false))
-  }, [groupId, day])
+  }, [groupId, day, onWallet])
 
   const onVoted = (checkInId: string, result: VoteResult) => {
     setItems((current) => applyVoteResult(current, checkInId, result))
-    if (result.wallet) setWallet(result.wallet)
+    if (result.wallet) {
+      setWallet(result.wallet)
+      onWallet?.(result.wallet)
+    }
   }
 
   return (

@@ -6,7 +6,8 @@ import { Avatar, Button, CardLabel, SegmentedControl, Sheet, cn } from '../../co
 import { GroupFeed } from '../../components/group/GroupFeed'
 import { GroupCalendar } from '../../components/group/GroupCalendar'
 import { GroupSettingsSheet } from '../../components/group/GroupSettingsSheet'
-import { api, type GroupDetail, type GroupMemberView } from '../../lib/api'
+import { VoteWalletBar } from '../../components/group/VoteWalletBar'
+import { api, type GroupDetail, type GroupMemberView, type VoteWallet } from '../../lib/api'
 
 type Mode = 'feed' | 'calendar'
 
@@ -32,6 +33,11 @@ export function GroupDetailScreen() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [wallet, setWallet] = useState<VoteWallet | undefined>()
+
+  useEffect(() => {
+    setWallet(undefined)
+  }, [id])
 
   const load = useCallback(async () => {
     try {
@@ -151,6 +157,8 @@ export function GroupDetailScreen() {
               <Trophy size={20} strokeWidth={2.5} />
             </Link>
           </div>
+
+          <VoteWalletBar wallet={wallet} />
         </div>
 
         {/* --- Panel plegable con los datos del grupo --- */}
@@ -268,9 +276,9 @@ export function GroupDetailScreen() {
 
         <div className="pb-10">
           {mode === 'feed' ? (
-            <GroupFeed groupId={group.id} isOwner={group.isOwner} />
+            <GroupFeed groupId={group.id} isOwner={group.isOwner} onWallet={setWallet} />
           ) : (
-            <GroupCalendar groupId={group.id} />
+            <GroupCalendar groupId={group.id} onWallet={setWallet} />
           )}
         </div>
       </div>

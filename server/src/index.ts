@@ -1658,6 +1658,11 @@ app.post('/api/checkins/:id/votes', requireAuth, async (req, res) => {
     return
   }
 
+  if (checkIn.userId === userId) {
+    res.status(403).json({ error: 'No puedes votarte a ti mismo' })
+    return
+  }
+
   const existing = await prisma.vote.findUnique({
     where: { checkInId_userId_kind: { checkInId, userId, kind } },
   })

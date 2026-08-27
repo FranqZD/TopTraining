@@ -20,6 +20,7 @@ export function FeedList({
   onAuthor,
   groupId,
   canModerate = false,
+  onWallet,
 }: {
   /** Si cambia, se reinicia la lista (otro grupo, otra persona). */
   sourceKey: string
@@ -31,6 +32,7 @@ export function FeedList({
   groupId?: string
   /** Dueño del grupo: puede borrar posts ajenos. */
   canModerate?: boolean
+  onWallet?: (wallet?: VoteWallet) => void
 }) {
   const [items, setItems] = useState<FeedItem[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
@@ -73,6 +75,10 @@ export function FeedList({
     setWallet(undefined)
     void fetchPage(null)
   }, [sourceKey, fetchPage])
+
+  useEffect(() => {
+    if (wallet) onWallet?.(wallet)
+  }, [wallet, onWallet])
 
   useEffect(() => {
     const node = sentinel.current
