@@ -35,14 +35,7 @@ export function weekDays(monday: string): string[] {
   return Array.from({ length: 7 }, (_, index) => shiftDay(monday, index))
 }
 
-/**
- * Racha diaria: días consecutivos con check-in.
- *
- * Si todavía no marcó hoy la racha NO está rota — arranca a contar desde ayer.
- * Perder la racha por no haber entrenado todavía a las 9 de la mañana sería
- * una crueldad innecesaria.
- */
-export function dailyStreak(days: Set<string>, today: string): number {
+function consecutiveDailyStreak(days: Set<string>, today: string): number {
   let cursor = days.has(today) ? today : days.has(shiftDay(today, -1)) ? shiftDay(today, -1) : null
   if (!cursor) return 0
 
@@ -50,6 +43,36 @@ export function dailyStreak(days: Set<string>, today: string): number {
   while (days.has(cursor)) {
     streak++
     cursor = shiftDay(cursor, -1)
+  }
+  return streak
+}
+
+function weekMetGoal(days: Set<string>, monday: string, goal: number): boolean {
+  return weekDays(monday).filter((day) => days.has(day)).length >= goal
+}
+
+/**
+ * Racha diaria: entrenos seguidos, sin cortar por un día de descanso si esa
+ * semana cumplió (o todavía puede cumplir) la meta personal.
+ *
+ * Si fallás el miércoles pero igual llegás a 4/4, esos 4 días siguen contando.
+ * Se rompe recién cuando una semana ya terminada no llegó a la meta.
+ *
+ * Sin meta, vuelve a ser días corridos con check-in. Si todavía no marcó hoy,
+ * la racha NO está rota: perderla a las 9 de la mañana sería una crueldad.
+ */
+export function dailyStreak(days: Set<string>, goal: number, today: string): number {
+  if (days.size === 0) return 0
+  if (!goal || goal < 1) return consecutiveDailyStreak(days, today)
+
+  const thisWeek = weekStart(today)
+  const earliest = [...days].reduce((min, day) => (day < min ? day : min))
+
+  let streak = 0
+  for (let cursor = today; cursor >= earliest; cursor = shiftDay(cursor, -1)) {
+    const monday = weekStart(cursor)
+    if (monday < thisWeek && !weekMetGoal(days, monday, goal)) break
+    if (days.has(cursor)) streak++
   }
   return streak
 }
@@ -78,17 +101,17 @@ export function weeklyStreak(days: Set<string>, goal: number, today: string): nu
 }
 
 export interface Streaks {
-  /** Días consecutivos con check-in. */
+  /** Entrenos de la racha actual: no se corta por un descanso si la semana cumplió la meta. */
   daily: number
   /** Semanas consecutivas cumpliendo la meta. */
   weekly: number
-  /** Meta semanal usada para calcular `weekly`. */
+  /** Meta semanal usada para calcular `weekly` y para no romper `daily`. */
   goal: number
 }
 
 export function computeStreaks(dayList: string[], goal: number, today: string): Streaks {
   const days = new Set(dayList)
-  return { daily: dailyStreak(days, today), weekly: weeklyStreak(days, goal, today), goal }
+  return { daily: dailyStreak(days, goal, today), weekly: weeklyStreak(days, goal, today), goal }
 }
 
 /**
@@ -136,9 +159,9 @@ export function summarizeWeeks(
 /**
  * Racha más larga dentro de un rango cerrado de días.
  *
- * A diferencia de `dailyStreak`, que mira hacia atrás desde hoy, esta recorre
- * la ventana entera y devuelve el mejor tramo: es lo que sirve para el recap
- * ("la racha más larga del mes"), donde el mes ya pasó y no hay un "hoy".
+ * A diferencia de `dailyStreak`, que mira hacia atrás desde hoy y perdona
+ * los descansos de una semana cumplida, esta recorre la ventana y cuenta
+ * días corridos: es lo que sirve para el recap ("la racha más larga del mes").
  */
 export function longestStreak(days: Set<string>, from: string, to: string): number {
   let best = 0

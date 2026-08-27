@@ -7,7 +7,7 @@
  * Checklist: DESIGN_SYSTEM.md §10.
  */
 
-export type ReleaseIcon = 'camera' | 'bell' | 'ghost' | 'bar' | 'trophy' | 'pen' | 'lock'
+export type ReleaseIcon = 'camera' | 'bell' | 'ghost' | 'bar' | 'trophy' | 'pen' | 'lock' | 'flame'
 
 export interface ReleaseItem {
   icon: ReleaseIcon
@@ -25,6 +25,19 @@ export interface Release {
 }
 
 export const RELEASES: Release[] = [
+  {
+    id: '2026.08.27-streaks',
+    dateLabel: '27 ago 2026',
+    title: 'La racha perdona el descanso',
+    tagline: 'Se rompe si no cumplís la meta, no si fallás un día.',
+    items: [
+      {
+        icon: 'flame',
+        title: 'Descansá si ya llegaste',
+        detail: 'Si tu meta es 4 y entrenaste 4, el viernes libre no te apaga la llama.',
+      },
+    ],
+  },
   {
     id: '2026.08.27-votes',
     dateLabel: '27 ago 2026',

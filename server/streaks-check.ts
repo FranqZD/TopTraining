@@ -15,14 +15,31 @@ check('lunes → sí mismo',       weekStart('2026-08-17'), '2026-08-17')
 check('domingo → lunes previo', weekStart('2026-08-23'), '2026-08-17')
 check('cruza fin de mes',       weekStart('2026-09-01'), '2026-08-31')
 
-console.log('\nracha diaria')
-check('sin check-ins', dailyStreak(set(), '2026-08-19'), 0)
-check('hoy solo', dailyStreak(set('2026-08-19'), '2026-08-19'), 1)
-check('3 días hasta hoy', dailyStreak(set('2026-08-17','2026-08-18','2026-08-19'), '2026-08-19'), 3)
-check('no marcó hoy pero sí ayer (no se rompe)', dailyStreak(set('2026-08-17','2026-08-18'), '2026-08-19'), 2)
-check('último fue anteayer → rota', dailyStreak(set('2026-08-17'), '2026-08-19'), 0)
-check('hueco en el medio corta', dailyStreak(set('2026-08-15','2026-08-18','2026-08-19'), '2026-08-19'), 2)
-check('cruza fin de mes', dailyStreak(set('2026-07-30','2026-07-31','2026-08-01'), '2026-08-01'), 3)
+console.log('\nracha diaria (sin meta: días corridos)')
+check('sin check-ins', dailyStreak(set(), 0, '2026-08-19'), 0)
+check('hoy solo', dailyStreak(set('2026-08-19'), 0, '2026-08-19'), 1)
+check('3 días hasta hoy', dailyStreak(set('2026-08-17','2026-08-18','2026-08-19'), 0, '2026-08-19'), 3)
+check('no marcó hoy pero sí ayer (no se rompe)', dailyStreak(set('2026-08-17','2026-08-18'), 0, '2026-08-19'), 2)
+check('último fue anteayer → rota', dailyStreak(set('2026-08-17'), 0, '2026-08-19'), 0)
+check('hueco en el medio corta', dailyStreak(set('2026-08-15','2026-08-18','2026-08-19'), 0, '2026-08-19'), 2)
+check('cruza fin de mes', dailyStreak(set('2026-07-30','2026-07-31','2026-08-01'), 0, '2026-08-01'), 3)
+
+console.log('\nracha diaria (con meta: el descanso no corta si cumplió)')
+// Semana 10–16: lun–jue. Hoy sábado 15 no: 2026-08-15 es sábado de ESA semana.
+// Mejor: semana 17–23 (lun 17). Entrenó lun–jue (17–20), meta 4. Hoy sábado 22.
+check('4/4 y descanso el viernes: sigue en 4', dailyStreak(set('2026-08-17','2026-08-18','2026-08-19','2026-08-20'), 4, '2026-08-22'), 4)
+check('un hueco en la semana en curso no corta', dailyStreak(set('2026-08-17','2026-08-19'), 4, '2026-08-19'), 2)
+check('dos semanas de 4/4 se suman', dailyStreak(
+  set('2026-08-10','2026-08-11','2026-08-12','2026-08-13','2026-08-17','2026-08-18','2026-08-19','2026-08-20'),
+  4,
+  '2026-08-22',
+), 8)
+check('semana pasada floja corta, aunque esta vaya bien', dailyStreak(
+  set('2026-08-10','2026-08-17','2026-08-18','2026-08-19'),
+  4,
+  '2026-08-19',
+), 3)
+check('sin meta no perdona el hueco', dailyStreak(set('2026-08-17','2026-08-20'), 0, '2026-08-22'), 0)
 
 console.log('\nracha semanal (meta 3)')
 const tresPorSemana = (mondays: string[]) => set(...mondays.flatMap((m) => [m, shiftDay(m, 2), shiftDay(m, 4)]))

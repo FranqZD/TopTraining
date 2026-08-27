@@ -132,7 +132,7 @@ export async function computeRecap(groupId: string, month: string, today: string
       completion: weeks.length ? weeks.filter((week) => week.met).length / weeks.length : null,
       joinedAt: member.joinedAt.getTime(),
       weekly: weeklyStreak(days, goal, asOf),
-      recentlyBroken: recentlyBroken(days, asOf, weeks),
+      recentlyBroken: recentlyBroken(days, asOf, weeks, goal),
       likes: votes.likes,
       lauras: votes.lauras,
     }
@@ -279,17 +279,17 @@ function assignTitles(drafted: DraftMember[]): RecapMember[] {
   }))
 }
 
-/** Se le rompió ahora: última semana evaluada fallida después de una cumplida,
- *  o la racha diaria se cortó hace entre 2 y 7 días. */
+/** Se le rompió ahora: última semana evaluada fallida después de una cumplida. */
 function recentlyBroken(
   days: Set<string>,
   asOf: string,
   weeks: { met: boolean }[],
+  goal: number,
 ): boolean {
   if (weeks.length >= 2 && !weeks[weeks.length - 1]!.met && weeks[weeks.length - 2]!.met) {
     return true
   }
-  if (dailyStreak(days, asOf) > 0) return false
+  if (dailyStreak(days, goal, asOf) > 0) return false
   const last = [...days].reduce<string | null>((best, day) => (day <= asOf && (!best || day > best) ? day : best), null)
   if (!last) return false
   return last <= shiftDay(asOf, -2) && last >= shiftDay(asOf, -7)

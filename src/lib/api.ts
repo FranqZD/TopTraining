@@ -137,11 +137,11 @@ export interface CheckIn {
 
 /** Rachas derivadas de los check-ins. No se guardan: las calcula el servidor. */
 export interface Streaks {
-  /** Días consecutivos con check-in. */
+  /** Entrenos de la racha actual: no se corta por un descanso si la semana cumplió la meta. */
   daily: number
   /** Semanas consecutivas cumpliendo la meta. */
   weekly: number
-  /** Meta semanal usada para calcular `weekly`. */
+  /** Meta semanal usada para calcular `weekly` y para no romper `daily`. */
   goal: number
 }
 
