@@ -64,6 +64,8 @@ export async function ensureSchema(): Promise<void> {
       ['notifyComments', 'BOOLEAN NOT NULL DEFAULT true'],
       ['notifyVotes', 'BOOLEAN NOT NULL DEFAULT true'],
       ['notifyFriends', 'BOOLEAN NOT NULL DEFAULT true'],
+      ['petSpecies', 'TEXT'],
+      ['petName', 'TEXT'],
     ])
 
     await addMissingColumns(client, 'checkin', [['photos', 'TEXT']])

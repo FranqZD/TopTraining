@@ -20,7 +20,9 @@ CREATE TABLE IF NOT EXISTS "user" (
     "notifyPosts" BOOLEAN NOT NULL DEFAULT true,
     "notifyComments" BOOLEAN NOT NULL DEFAULT true,
     "notifyVotes" BOOLEAN NOT NULL DEFAULT true,
-    "notifyFriends" BOOLEAN NOT NULL DEFAULT true
+    "notifyFriends" BOOLEAN NOT NULL DEFAULT true,
+    "petSpecies" TEXT,
+    "petName" TEXT
 );
 
 CREATE TABLE IF NOT EXISTS "session" (

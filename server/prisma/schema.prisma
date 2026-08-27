@@ -50,6 +50,10 @@ model User {
   /// Te llegó una solicitud de amistad.
   notifyFriends  Boolean @default(true)
 
+  /// Mascota de Inicio. Null = todavía no eligió.
+  petSpecies String?
+  petName    String?
+
   sessions Session[]
   accounts Account[]
   checkIns CheckIn[]

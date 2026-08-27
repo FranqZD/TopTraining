@@ -11,9 +11,10 @@
     "db:studio": "prisma studio",
     "auth:generate": "better-auth generate --config src/auth.ts --output ../prisma/schema.prisma",
     "test:streaks": "tsx streaks-check.ts",
+    "test:pets": "tsx pets-check.ts",
     "db:seed": "tsx prisma/seed-dev.ts",
     "test:scheduler": "tsx scheduler-check.ts",
-    "test": "npm run test:streaks && npm run test:scheduler && npm run test:recap",
+    "test": "npm run test:streaks && npm run test:pets && npm run test:scheduler && npm run test:recap",
     "test:recap": "tsx recap-check.ts"
   },
   "dependencies": {

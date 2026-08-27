@@ -7,7 +7,7 @@
  * Checklist: DESIGN_SYSTEM.md §10.
  */
 
-export type ReleaseIcon = 'camera' | 'bell' | 'ghost' | 'bar' | 'trophy' | 'pen' | 'lock' | 'flame' | 'user'
+export type ReleaseIcon = 'camera' | 'bell' | 'ghost' | 'bar' | 'trophy' | 'pen' | 'lock' | 'flame' | 'user' | 'paw'
 
 export interface ReleaseItem {
   icon: ReleaseIcon
@@ -25,6 +25,24 @@ export interface Release {
 }
 
 export const RELEASES: Release[] = [
+  {
+    id: '2026.08.27-pets',
+    dateLabel: '27 ago 2026',
+    title: 'Tu mascota',
+    tagline: 'Vive en Inicio, debajo de tus grupos. Crece si cumples la meta.',
+    items: [
+      {
+        icon: 'paw',
+        title: 'Escoge y ponle nombre',
+        detail: 'Gota, gema, ave, planta o bonsái. El nivel sube cada vez que cierras tu meta semanal.',
+      },
+      {
+        icon: 'paw',
+        title: 'Si dejas de marcar, se nota',
+        detail: 'Un día, unos días, o si se rompe la racha: cambia de ánimo.',
+      },
+    ],
+  },
   {
     id: '2026.08.27-wallet',
     dateLabel: '27 ago 2026',

@@ -35,6 +35,9 @@ export const api = {
 
 export type TrainingSlot = 'morning' | 'afternoon' | 'night'
 
+export const PET_SPECIES = ['blob', 'gem', 'bird', 'plant', 'bonsai'] as const
+export type PetSpecies = (typeof PET_SPECIES)[number]
+
 export interface Profile {
   id: string
   name: string
@@ -58,6 +61,9 @@ export interface Profile {
   notifyVotes: boolean
   /** Te llegó una solicitud de amistad. */
   notifyFriends: boolean
+  /** Especie de la mascota. Null si todavía no eligió. */
+  petSpecies: PetSpecies | null
+  petName: string | null
 }
 
 /** Los campos de `Profile` que son interruptores de avisos. */
@@ -143,6 +149,23 @@ export interface Streaks {
   weekly: number
   /** Meta semanal usada para calcular `weekly` y para no romper `daily`. */
   goal: number
+}
+
+/** Evolución 0–5. El 5 es el tope: más semanas cumplidas no cambian el cuerpo. */
+export type PetStage = 0 | 1 | 2 | 3 | 4 | 5
+
+/** Ánimo encima de la evolución. `broken` gana si se rompió la racha semanal. */
+export type PetMood = 'ok' | 'skip1' | 'skip2' | 'broken'
+
+export interface PetView {
+  stage: PetStage
+  mood: PetMood
+  weeksMet: number
+  skipDays: number
+  goal: number
+  /** Null si todavía no eligió mascota. */
+  species: PetSpecies | null
+  name: string | null
 }
 
 export interface FriendWithStreaks extends Friend {

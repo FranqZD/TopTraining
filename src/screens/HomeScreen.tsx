@@ -11,14 +11,15 @@ import {
   type CheckIn,
   type FriendRequests,
   type Group,
+  type PetView,
 } from '../lib/api'
 import { thumbnail, photoUrls } from '../lib/photo'
 import { useProfile } from '../profile/useProfile'
+import { PetHome } from '../pets/PetHome'
 
 /**
- * Home. El orden no es casual: primero la acción del día y después tus grupos,
- * que es lo que se mira todos los días. Amigos y ajustes viven en el encabezado
- * como íconos: se entra de vez en cuando y no compiten con lo de arriba.
+ * Home. El orden no es casual: primero la acción del día, después tus grupos,
+ * y abajo la mascota en el hueco que queda — sin scrollear.
  */
 export function HomeScreen() {
   const { profile } = useProfile()
@@ -31,6 +32,7 @@ export function HomeScreen() {
   const [groupsLoaded, setGroupsLoaded] = useState(false)
   const [pending, setPending] = useState(0)
   const [checkIns, setCheckIns] = useState<CheckIn[]>([])
+  const [pet, setPet] = useState<PetView | undefined>()
   /** Sale una sola vez, al aterrizar después de marcar el entreno. */
   const justCheckedIn = Boolean((location.state as { justCheckedIn?: boolean } | null)?.justCheckedIn)
   const [showVoteHint, setShowVoteHint] = useState(justCheckedIn)
@@ -47,6 +49,7 @@ export function HomeScreen() {
       .catch(() => setPending(0))
     // Mis últimos check-ins: con eso salen el estado de hoy y la semana entera.
     api.get<CheckIn[]>('/checkins').then(setCheckIns).catch(() => setCheckIns([]))
+    api.get<PetView>('/me/pet').then(setPet).catch(() => setPet(undefined))
   }, [])
 
   // Limpia el flag del historial para que un F5 o un "atrás" no vuelva a
@@ -85,9 +88,9 @@ export function HomeScreen() {
   if (!profile) return null
 
   return (
-    <div className="min-h-dvh bg-canvas">
-      <div className="app-frame max-w-[440px] flex flex-col gap-7">
-        <header className="flex items-center justify-between gap-3">
+    <div className="h-dvh min-h-0 overflow-hidden bg-canvas flex flex-col">
+      <div className="app-frame max-w-[440px] flex-1 min-h-0 flex flex-col gap-5">
+        <header className="flex items-center justify-between gap-3 shrink-0">
           <Link
             to={`/u/${profile.id}`}
             aria-label="Ver tu perfil"
@@ -130,7 +133,7 @@ export function HomeScreen() {
             adentro de la misma tarjeta — marcar hoy y ver cómo viene la
             semana son la misma pregunta.
            ------------------------------------------------------------------ */}
-        <section aria-label="Check-in de hoy">
+        <section aria-label="Check-in de hoy" className="shrink-0">
           {checkedInToday ? (
             <Link
               to="/checkin"
@@ -183,7 +186,7 @@ export function HomeScreen() {
         </section>
 
         {/* --- Grupos: carrusel horizontal, uno al lado del otro --- */}
-        <section className="flex flex-col gap-3 pb-10">
+        <section className="flex flex-col gap-3 shrink-0">
           <div className="flex items-center justify-between gap-3">
             <CardLabel className="mb-0">Tus grupos{groupsLoaded && ` (${groups.length})`}</CardLabel>
             <Link to="/groups/join" className="tape text-accent hover:underline">
@@ -225,6 +228,8 @@ export function HomeScreen() {
             )}
           </div>
         </section>
+
+        <PetHome pet={pet} onAdopted={setPet} />
       </div>
 
       <VoteHintToast open={showVoteHint} onClose={() => setShowVoteHint(false)} />

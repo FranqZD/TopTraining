@@ -8,6 +8,7 @@ import { prisma } from './db.js'
 import { generateGroupCode } from './codes.js'
 import { deletePhoto, deleteRemovedPhotos, feedPhotoFields, imageTransformBase, isOwnPhotoUrl, MAX_CHECKIN_PHOTOS, parseCheckInPhotos, persistPhotos, publicPhotos, putCheckInPhoto, storageConfigured } from './storage.js'
 import { computeStreaks, shiftDay, weekDays, weekStart } from './streaks.js'
+import { computePet } from './pets.js'
 import { pushConfigured, sendToUser, vapidPublicKey } from './push.js'
 import {
   fireAndForget,
@@ -85,6 +86,8 @@ const PROFILE_SELECT = {
   notifyComments: true,
   notifyVotes: true,
   notifyFriends: true,
+  petSpecies: true,
+  petName: true,
 } as const
 
 /* ---------------------------------------------------------------------------
@@ -233,6 +236,68 @@ app.get('/api/me', requireAuth, async (req, res) => {
     return
   }
   res.json(user)
+})
+
+app.get('/api/me/pet', requireAuth, async (req, res) => {
+  const [profile, rows] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { weeklyFrequency: true, petSpecies: true, petName: true },
+    }),
+    prisma.checkIn.findMany({ where: { userId: req.userId }, select: { day: true } }),
+  ])
+  if (!profile) {
+    res.status(404).json({ error: 'Usuario no encontrado' })
+    return
+  }
+  res.json({
+    ...computePet(
+      rows.map((row) => row.day),
+      profile.weeklyFrequency ?? 0,
+      todayFor(req),
+    ),
+    species: isPetSpecies(profile.petSpecies) ? profile.petSpecies : null,
+    name: profile.petName,
+  })
+})
+
+const PET_SPECIES = ['blob', 'gem', 'bird', 'plant', 'bonsai'] as const
+type PetSpecies = (typeof PET_SPECIES)[number]
+
+function isPetSpecies(value: string | null | undefined): value is PetSpecies {
+  return PET_SPECIES.includes(value as PetSpecies)
+}
+
+app.patch('/api/me/pet', requireAuth, async (req, res) => {
+  const parsed = z
+    .object({
+      species: z.enum(PET_SPECIES),
+      name: z.string().trim().min(1).max(16),
+    })
+    .safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Elige una mascota y ponle un nombre' })
+    return
+  }
+
+  const [profile, rows] = await Promise.all([
+    prisma.user.update({
+      where: { id: req.userId },
+      data: { petSpecies: parsed.data.species, petName: parsed.data.name },
+      select: { weeklyFrequency: true, petSpecies: true, petName: true },
+    }),
+    prisma.checkIn.findMany({ where: { userId: req.userId }, select: { day: true } }),
+  ])
+
+  res.json({
+    ...computePet(
+      rows.map((row) => row.day),
+      profile.weeklyFrequency ?? 0,
+      todayFor(req),
+    ),
+    species: profile.petSpecies,
+    name: profile.petName,
+  })
 })
 
 app.patch('/api/me', requireAuth, async (req, res) => {

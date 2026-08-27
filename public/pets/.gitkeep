@@ -1,0 +1,3 @@
+# Dibuja de la mascota. Nombre: {nivel}-{animo}.webp (o .png)
+# Nivel 0–5. Ánimo: ok | skip1 | skip2 | broken
+# Ejemplo: 3-ok.webp  ·  0-skip1.png

@@ -1,0 +1,72 @@
+/* pets.css — hoja única de movimiento para las mascotas.
+   Un bucle por estado, solo transform y opacity.
+   Sobrescribe los colores apuntando a .pet (o a un ancestro). */
+
+.pet {
+  --pet-accent: var(--color-accent);
+  --pet-accent-soft: var(--color-accent-text);
+  --pet-ink: var(--color-ink-50);
+  --pet-ink-soft: var(--color-ink-400);
+  --pet-bg: var(--color-ink-900);
+  --pet-mute: var(--color-ink-500);
+  --pet-mute-2: var(--color-ink-700);
+  --pet-soil: var(--color-ink-600);
+  display: block;
+}
+
+/* transform-box para que los orígenes se lean en unidades del viewBox */
+.pet [class^="p-"] {
+  transform-box: view-box;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+.pet .p-fall, .pet .p-orbit { animation-timing-function: linear; }
+.pet .p-blink { animation-timing-function: steps(1, end); }
+
+.pet .p-bob       { animation-name: pet-bob; }
+.pet .p-twinkle   { animation-name: pet-twinkle; }
+.pet .p-breathe   { animation-name: pet-breathe; }
+.pet .p-sag       { animation-name: pet-sag; }
+.pet .p-ooze      { animation-name: pet-ooze; }
+.pet .p-frost     { animation-name: pet-frost; }
+.pet .p-glint     { animation-name: pet-glint; }
+.pet .p-tremor    { animation-name: pet-tremor; }
+.pet .p-drift     { animation-name: pet-drift; }
+.pet .p-flapL     { animation-name: pet-flapL; }
+.pet .p-flapR     { animation-name: pet-flapR; }
+.pet .p-blink     { animation-name: pet-blink; }
+.pet .p-droop     { animation-name: pet-droop; }
+.pet .p-shiver    { animation-name: pet-shiver; }
+.pet .p-sway      { animation-name: pet-sway; }
+.pet .p-swaySoft  { animation-name: pet-swaySoft; }
+.pet .p-fall      { animation-name: pet-fall; }
+.pet .p-sprout    { animation-name: pet-sprout; }
+.pet .p-orbit     { animation-name: pet-orbit; }
+.pet .p-pulseRing { animation-name: pet-pulseRing; }
+
+@keyframes pet-bob { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-5px) } }
+@keyframes pet-twinkle { 0%,100% { opacity: 1 } 50% { opacity: .15 } }
+@keyframes pet-breathe { 0%,100% { transform: scale(1,1) } 50% { transform: scale(1.04,.96) } }
+@keyframes pet-sag { 0%,100% { transform: translateY(0) } 50% { transform: translateY(2.5px) } }
+@keyframes pet-ooze { 0%,100% { transform: scale(1,1) } 50% { transform: scale(1.05,.93) } }
+@keyframes pet-frost { 0%,100% { opacity: .25 } 50% { opacity: 1 } }
+@keyframes pet-glint { 0%,100% { opacity: .25; transform: translate(-3px,0) } 50% { opacity: 1; transform: translate(3px,0) } }
+@keyframes pet-tremor { 0%,86%,100% { transform: translateX(0) } 90% { transform: translateX(-1.5px) } 95% { transform: translateX(1.5px) } }
+@keyframes pet-drift { 0%,100% { transform: translate(0,0) rotate(0deg) } 50% { transform: translate(1.5px,1px) rotate(2deg) } }
+@keyframes pet-flapL { 0%,100% { transform: rotate(0deg) } 50% { transform: rotate(-20deg) } }
+@keyframes pet-flapR { 0%,100% { transform: rotate(0deg) } 50% { transform: rotate(20deg) } }
+@keyframes pet-blink { 0%,90%,100% { transform: scaleY(1) } 95% { transform: scaleY(.1) } }
+@keyframes pet-droop { 0%,100% { transform: rotate(0deg) } 50% { transform: rotate(-5deg) } }
+@keyframes pet-shiver { 0%,100% { transform: translateX(0) } 25% { transform: translateX(-1px) } 75% { transform: translateX(1px) } }
+@keyframes pet-sway { 0%,100% { transform: rotate(-2deg) } 50% { transform: rotate(2deg) } }
+@keyframes pet-swaySoft { 0%,100% { transform: rotate(-1deg) } 50% { transform: rotate(1deg) } }
+@keyframes pet-fall { 0% { transform: translate(0,0) rotate(0deg); opacity: 0 } 12% { opacity: 1 } 100% { transform: translate(-7px,26px) rotate(70deg); opacity: 0 } }
+@keyframes pet-sprout { 0%,100% { transform: scale(1) } 50% { transform: scale(1.14) } }
+@keyframes pet-orbit { 0% { transform: rotate(0deg) } 100% { transform: rotate(360deg) } }
+@keyframes pet-pulseRing { 0%,100% { transform: scale(.92); opacity: .3 } 50% { transform: scale(1.06); opacity: .9 } }
+
+.pet[data-paused="true"] [class^="p-"] { animation-play-state: paused; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pet [class^="p-"] { animation: none !important; }
+}
