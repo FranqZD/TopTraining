@@ -110,7 +110,7 @@ export function CheckInScreen() {
         })
         setCheckIn(created)
         setMode('done')
-        setTimeout(() => navigate('/', { replace: true }), 1900)
+        setTimeout(() => navigate('/', { replace: true, state: { justCheckedIn: true } }), 1900)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No pudimos guardar el check-in')

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
+import { AnimatePresence, motion } from 'motion/react'
 import { Check, ChevronRight, Flame, Plus, Settings, Users, X } from 'lucide-react'
 import { Avatar, Card, CardLabel, DayMark, cn } from '../components/ui'
 import {
@@ -21,6 +22,8 @@ import { useProfile } from '../profile/useProfile'
  */
 export function HomeScreen() {
   const { profile } = useProfile()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [groups, setGroups] = useState<Group[]>([])
   /** El carrusel no se monta hasta tener los grupos: si nace con la tarjeta de
    *  "crear" sola, el scroll-snap se ancla a ella y al llegar los grupos la
@@ -28,6 +31,9 @@ export function HomeScreen() {
   const [groupsLoaded, setGroupsLoaded] = useState(false)
   const [pending, setPending] = useState(0)
   const [checkIns, setCheckIns] = useState<CheckIn[]>([])
+  /** Sale una sola vez, al aterrizar después de marcar el entreno. */
+  const justCheckedIn = Boolean((location.state as { justCheckedIn?: boolean } | null)?.justCheckedIn)
+  const [showVoteHint, setShowVoteHint] = useState(justCheckedIn)
 
   useEffect(() => {
     api
@@ -42,6 +48,22 @@ export function HomeScreen() {
     // Mis últimos check-ins: con eso salen el estado de hoy y la semana entera.
     api.get<CheckIn[]>('/checkins').then(setCheckIns).catch(() => setCheckIns([]))
   }, [])
+
+  // Limpia el flag del historial para que un F5 o un "atrás" no vuelva a
+  // mostrar el mensaje. El aviso vive en estado local, no en la URL.
+  // El delay evita que Strict Mode (monta → desmonta → monta) borre el
+  // estado antes de que el aviso llegue a pintarse.
+  useEffect(() => {
+    if (!justCheckedIn) return
+    const clear = window.setTimeout(() => navigate('.', { replace: true, state: {} }), 100)
+    return () => window.clearTimeout(clear)
+  }, [justCheckedIn, navigate])
+
+  useEffect(() => {
+    if (!showVoteHint) return
+    const hide = window.setTimeout(() => setShowVoteHint(false), 7000)
+    return () => window.clearTimeout(hide)
+  }, [showVoteHint])
 
   const today = localDay()
   const days = useMemo(() => weekDays(weekStart(today)), [today])
@@ -199,7 +221,50 @@ export function HomeScreen() {
           </div>
         </section>
       </div>
+
+      <VoteHintToast open={showVoteHint} onClose={() => setShowVoteHint(false)} />
     </div>
+  )
+}
+
+/**
+ * Aviso de que el voto ya está desbloqueado. Sale abajo, cerca del pulgar,
+ * y se va solo: no es un modal y no pelea con la tarjeta de "ya entrenaste".
+ */
+function VoteHintToast({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          role="status"
+          initial={{ opacity: 0, y: 28 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 16 }}
+          transition={{ type: 'spring', stiffness: 520, damping: 26 }}
+          className="fixed inset-x-0 bottom-0 z-40 flex justify-center pointer-events-none"
+        >
+          <div className="pointer-events-auto w-full max-w-[440px] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+            <div className="flex items-start gap-3 p-4 rounded-[var(--radius-lg)] bg-surface-raised border border-line shadow-raised">
+              <DayMark state="done" size="md" animate />
+              <div className="min-w-0 flex-1 pt-0.5">
+                <p className="text-title leading-tight">Gracias por entrenar hoy</p>
+                <p className="text-caption text-text-muted mt-1">
+                  Ahora puedes votar en los entrenamientos de tus amigos :)
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Cerrar"
+                className="pressable grid place-items-center size-11 shrink-0 -mr-1.5 -mt-1 rounded-[var(--radius-md)] text-ink-400 hover:text-ink-50 hover:bg-ink-800 cursor-pointer"
+              >
+                <X size={18} strokeWidth={2.5} />
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 
