@@ -2,7 +2,7 @@
  * Notas de cada parche. La id es lo que se guarda en el dispositivo: si el
  * usuario no la vio, la pantalla de "hay de nuevo" se abre sola.
  *
- * Orden: lo más nuevo primero. Para un parche nuevo, copiá un bloque arriba
+ * Orden: lo más nuevo primero. Para un parche nuevo, copia un bloque arriba
  * con una id que no se haya usado (la fecha alcanza; el mismo día, un sufijo).
  * Checklist: DESIGN_SYSTEM.md §10.
  */
@@ -29,7 +29,7 @@ export const RELEASES: Release[] = [
     id: '2026.08.27-wallet',
     dateLabel: '27 ago 2026',
     title: 'Cuántas te quedan',
-    tagline: 'En el grupo ves tus auras y lauras. A vos no te votás.',
+    tagline: 'En el grupo ves tus auras y lauras. Ya no puedes votarte a ti mismo.',
     items: [
       {
         icon: 'bar',
@@ -38,7 +38,7 @@ export const RELEASES: Release[] = [
       },
       {
         icon: 'lock',
-        title: 'Sin votarte a vos',
+        title: 'Sin votarte a ti mismo',
         detail: 'Aura y laura son para los demás. En tu propio entreno no hay botones.',
       },
     ],
@@ -51,7 +51,7 @@ export const RELEASES: Release[] = [
     items: [
       {
         icon: 'user',
-        title: 'Tocá tu foto',
+        title: 'Toca tu foto',
         detail: 'En Inicio, tu cara abre tu perfil con tus entrenos.',
       },
     ],
@@ -73,11 +73,11 @@ export const RELEASES: Release[] = [
     id: '2026.08.27-streaks',
     dateLabel: '27 ago 2026',
     title: 'La racha perdona el descanso',
-    tagline: 'Se rompe si no cumplís la meta, no si fallás un día.',
+    tagline: 'Se rompe si no cumples la meta, no si fallas un día.',
     items: [
       {
         icon: 'flame',
-        title: 'Descansá si ya llegaste',
+        title: 'Descansa si ya llegaste',
         detail: 'Si tu meta es 4 y entrenaste 4, el viernes libre no te apaga la llama.',
       },
     ],
@@ -91,12 +91,12 @@ export const RELEASES: Release[] = [
       {
         icon: 'bar',
         title: 'Un aura y una laura por entreno',
-        detail: 'Cada vez que marcás, ganás uno de cada para dar. No se gastan al día: se acumulan.',
+        detail: 'Cada vez que marcas, ganas uno de cada para dar. No se gastan al día: se acumulan.',
       },
       {
         icon: 'lock',
         title: 'Al día siguiente, se queda',
-        detail: 'El mismo día lo podés sacar o cambiar. Si pasó un día, ese voto ya no se mueve.',
+        detail: 'El mismo día lo puedes sacar o cambiar. Si pasó un día, ese voto ya no se mueve.',
       },
     ],
   },
@@ -104,11 +104,11 @@ export const RELEASES: Release[] = [
     id: '2026.08.27-posts',
     dateLabel: '27 ago 2026',
     title: 'Posts en el grupo',
-    tagline: 'Decí algo sin marcar un entreno.',
+    tagline: 'Di algo sin marcar un entreno.',
     items: [
       {
         icon: 'pen',
-        title: 'Escribí en el grupo',
+        title: 'Escribe en el grupo',
         detail: 'Un post de texto, sin votos ni comentarios. No cuenta como entreno.',
       },
     ],
@@ -117,17 +117,17 @@ export const RELEASES: Release[] = [
     id: '2026.08.27',
     dateLabel: '27 ago 2026',
     title: 'Fotos, votos y recap',
-    tagline: 'Lo que pediste, sin vueltas.',
+    tagline: 'Lo que pediste, sin rodeos.',
     items: [
       {
         icon: 'camera',
         title: 'Hasta 3 fotos por entreno',
-        detail: 'Sacá o elegí hasta tres. En el feed se deslizan de costado.',
+        detail: 'Saca o elige hasta tres. En el feed se deslizan de costado.',
       },
       {
         icon: 'bell',
         title: 'Después de marcar, un aviso',
-        detail: 'Te recuerda que ya podés votar los entrenos de tus amigos.',
+        detail: 'Te recuerda que ya puedes votar los entrenos de tus amigos.',
       },
       {
         icon: 'ghost',

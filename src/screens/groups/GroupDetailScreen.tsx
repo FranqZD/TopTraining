@@ -136,6 +136,8 @@ export function GroupDetailScreen() {
             )}
           </header>
 
+          <VoteWalletBar wallet={wallet} />
+
           <div className="flex items-stretch gap-2">
             <SegmentedControl
               className="flex-1"
@@ -157,8 +159,6 @@ export function GroupDetailScreen() {
               <Trophy size={20} strokeWidth={2.5} />
             </Link>
           </div>
-
-          <VoteWalletBar wallet={wallet} />
         </div>
 
         {/* --- Panel plegable con los datos del grupo --- */}
