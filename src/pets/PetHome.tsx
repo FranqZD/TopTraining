@@ -19,11 +19,7 @@ export function PetHome({ pet, onAdopted }: { pet?: PetView; onAdopted: (pet: Pe
       <CardLabel className="mb-0">{adopted ? pet!.name : 'Tu mascota'}</CardLabel>
       <div className="flex-1 min-h-0 rounded-[var(--radius-lg)] bg-surface border border-line-soft overflow-hidden flex flex-col">
         {adopted ? (
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            className="pressable flex-1 min-h-0 flex flex-col items-center justify-center gap-1 cursor-pointer px-3 py-2"
-          >
+          <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-1 px-3 py-2">
             <div className="flex-1 min-h-0 grid place-items-center w-full">
               <Pet
                 species={pet!.species!}
@@ -38,7 +34,7 @@ export function PetHome({ pet, onAdopted }: { pet?: PetView; onAdopted: (pet: Pe
               Nivel {level}
               {pet!.goal > 0 ? ` · ${moodLabel(pet!.mood)}` : ''}
             </p>
-          </button>
+          </div>
         ) : (
           <button
             type="button"
@@ -61,7 +57,6 @@ export function PetHome({ pet, onAdopted }: { pet?: PetView; onAdopted: (pet: Pe
       <AdoptSheet
         open={open}
         onClose={() => setOpen(false)}
-        current={adopted ? pet : undefined}
         onAdopted={(next) => {
           onAdopted(next)
           setOpen(false)
@@ -74,23 +69,21 @@ export function PetHome({ pet, onAdopted }: { pet?: PetView; onAdopted: (pet: Pe
 function AdoptSheet({
   open,
   onClose,
-  current,
   onAdopted,
 }: {
   open: boolean
   onClose: () => void
-  current?: PetView
   onAdopted: (pet: PetView) => void
 }) {
-  const [species, setSpecies] = useState<PetSpecies>(current?.species ?? 'blob')
-  const [name, setName] = useState(current?.name ?? '')
+  const [species, setSpecies] = useState<PetSpecies>('blob')
+  const [name, setName] = useState('')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!open) return
-    setSpecies(current?.species ?? 'blob')
-    setName(current?.name ?? '')
-  }, [open, current])
+    setSpecies('blob')
+    setName('')
+  }, [open])
 
   const submit = async () => {
     const trimmed = name.trim()
@@ -128,6 +121,10 @@ function AdoptSheet({
           })}
         </div>
 
+        <p className="text-caption text-warning">
+          Elige con calma: la mascota y el nombre no se pueden cambiar después.
+        </p>
+
         <TextField
           label="Nombre"
           name="petName"
@@ -139,7 +136,7 @@ function AdoptSheet({
         />
 
         <Button size="lg" fullWidth disabled={saving || !name.trim()} onClick={() => void submit()}>
-          {current?.species ? 'Guardar' : 'Adoptar'}
+          Adoptar
         </Button>
       </div>
     </Sheet>

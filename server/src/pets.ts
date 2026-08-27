@@ -8,11 +8,11 @@ import { shiftDay, weekDays, weekStart, weeklyStreak } from './streaks.js'
  * eso se ve en el ánimo.
  *
  * Ánimo:
- *  - `ok`     — al día, o ya cumpliste esta semana (el descanso no cuenta).
+ *  - `ok`     — al día, o todavía no cerraste ninguna meta (nivel 1).
  *  - `skip1`  — un día seguido sin marcar, y la semana todavía no está.
  *  - `skip2`  — dos o tres días (o más) sin marcar, misma semana abierta.
  *  - `broken` — la semana pasada se cerró sin llegar a la meta: se rompió
- *               la racha. Gana sobre los skips.
+ *               la racha. Solo si ya habías cumplido al menos una.
  */
 
 export type PetStage = 0 | 1 | 2 | 3 | 4 | 5
@@ -75,7 +75,9 @@ export function computePet(dayList: string[], goal: number, today: string): PetV
   const thisWeekMet = weekMet(days, weekStart(today), goal)
 
   let mood: PetMood = 'ok'
-  if (days.size === 0) {
+  // Sin ninguna meta cerrada todavía: primer cuerpo (nivel 1), al día.
+  // El ánimo feo (skip / rota) solo aplica cuando ya evolucionó al menos una vez.
+  if (weeksMet === 0 || days.size === 0) {
     mood = 'ok'
   } else if (isBroken(days, goal, today)) {
     mood = 'broken'

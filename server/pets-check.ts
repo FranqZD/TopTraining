@@ -67,9 +67,9 @@ check(
   'ok',
 )
 check(
-  'un día sin marcar (ayer vacío, anteayer sí)',
+  'sin meta cerrada, un hueco no pone skip',
   computePet(['2026-08-17'], goal, today).mood,
-  'skip1',
+  'ok',
 )
 check(
   'un día: skipDays 1',
@@ -77,7 +77,7 @@ check(
   1,
 )
 check(
-  'dos días sin marcar',
+  'dos días sin marcar (ya había cumplido una semana)',
   computePet([...weekBefore, '2026-08-16'], goal, today).mood,
   'skip2',
 )
@@ -99,20 +99,26 @@ check(
   'skip2',
 )
 
+const twoWeeksAgo = ['2026-08-03', '2026-08-04', '2026-08-05', '2026-08-06']
 check(
-  'semana pasada no llegó: broken',
+  'sin ninguna meta cerrada: primer estado, no rota',
   computePet(['2026-08-10', '2026-08-11'], goal, today).mood,
+  'ok',
+)
+check(
+  'cumplió una y la siguiente se cayó: broken',
+  computePet([...twoWeeksAgo, '2026-08-10', '2026-08-11'], goal, today).mood,
   'broken',
 )
 check(
   'broken gana aunque hayas marcado hoy',
-  computePet(['2026-08-10', '2026-08-11', '2026-08-19'], goal, today).mood,
+  computePet([...twoWeeksAgo, '2026-08-10', '2026-08-11', '2026-08-19'], goal, today).mood,
   'broken',
 )
 check(
-  'usuario nuevo esta semana: no arranca roto',
+  'usuario nuevo esta semana: primer estado',
   computePet(['2026-08-17'], goal, today).mood,
-  'skip1',
+  'ok',
 )
 
 if (failures) {

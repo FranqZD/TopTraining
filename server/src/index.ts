@@ -280,6 +280,19 @@ app.patch('/api/me/pet', requireAuth, async (req, res) => {
     return
   }
 
+  const existing = await prisma.user.findUnique({
+    where: { id: req.userId },
+    select: { petSpecies: true, petName: true },
+  })
+  if (!existing) {
+    res.status(404).json({ error: 'Usuario no encontrado' })
+    return
+  }
+  if (existing.petSpecies && existing.petName) {
+    res.status(403).json({ error: 'La mascota y el nombre ya están. No se pueden cambiar.' })
+    return
+  }
+
   const [profile, rows] = await Promise.all([
     prisma.user.update({
       where: { id: req.userId },

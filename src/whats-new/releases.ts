@@ -34,7 +34,7 @@ export const RELEASES: Release[] = [
       {
         icon: 'paw',
         title: 'Escoge y ponle nombre',
-        detail: 'Gota, gema, ave, planta o bonsái. El nivel sube cada vez que cierras tu meta semanal.',
+        detail: 'Gota, gema, ave, planta o bonsái. Elige y nómbrala una vez: después no se cambia. El nivel sube cada vez que cierras tu meta semanal.',
       },
       {
         icon: 'paw',
