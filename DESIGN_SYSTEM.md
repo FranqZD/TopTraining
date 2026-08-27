@@ -1,7 +1,7 @@
 # Top Training — Sistema de diseño v1
 
-> Regla de oro: **ninguna pantalla inventa valores.** Si necesitás un color, un
-> tamaño, un radio o una duración que no está acá, se agrega primero al sistema
+> Regla de oro: **ninguna pantalla inventa valores.** Si necesitas un color, un
+> tamaño, un radio o una duración que no está aquí, se agrega primero al sistema
 > y después se usa. Eso es lo que evita que la app termine pareciendo una
 > plantilla genérica.
 
@@ -9,7 +9,7 @@
 
 ## 1. Qué se ve y por qué
 
-**Personalidad:** enérgica, directa, un poco hincha pelotas. Habla de vos y te
+**Personalidad:** enérgica, directa, un poco pesada. Te habla de tú y te
 carga. Pero se ve limpia: el humor está en el texto y en el ritmo, no en
 formas infantiles ni en decoración.
 
@@ -118,7 +118,7 @@ Firma de marca y regla dura: **el texto sobre el acento es siempre casi negro**
 
 | Color | Significa | Dónde |
 |---|---|---|
-| `accent` | racha viva, acción principal, "vos" | CTA, llama, día de hoy |
+| `accent` | racha viva, acción principal, "tú" | CTA, llama, día de hoy |
 | `success` | día cumplido | check del calendario y del feed |
 | `warning` | en riesgo, te queda poco | racha por romperse, meta al límite |
 | `danger` | día perdido, racha rota, acción destructiva | equis, "abandonar reto" |
@@ -187,7 +187,7 @@ Componentes: `<DayMark state size animate />` y `<StreakBadge days state size />
 ## 7. Tema personalizable (feature de producto)
 
 1. El usuario elige paleta en **Ajustes** y en el **último paso del onboarding**
-   (después de agregar amigos), con `<ThemePicker />`. Un toque aplica; sin
+   (después de agregar amigos), con `<ThemePicker />`. Al tocarlo aplica; sin
    guardar, sin confirmar, sin teclado.
 2. `ThemeProvider` escribe `data-theme` en `<html>`. Como **todos** los
    componentes consumen variables CSS, la app entera se repinta: feed,
@@ -288,7 +288,7 @@ Referencia de que el sistema aguanta pantallas reales:
 - **Recap:** el número grande manda (`.num` en `text-stat-xl`), la barra de
   cumplimiento cambia de color por tramos (success / warning / danger) y el
   veredicto en texto acompaña al número. Sin tarjetas de “quién la rompió”
-  ni “el más huevón”: el recap cuenta el mes, no señala a nadie.
+  ni “el más flojo”: el recap cuenta el mes, no señala a nadie.
 - **Modales:** siempre hoja inferior, nunca modal centrado. En una app que se
   usa con una mano, lo importante tiene que caer cerca del pulgar.
 

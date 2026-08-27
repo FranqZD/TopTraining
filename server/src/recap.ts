@@ -59,7 +59,7 @@ export interface Recap {
   members: RecapMember[]
   /** El que mejor la remó. null si no hay nada que destacar todavía. */
   best: RecapMember | null
-  /** El más huevón. null si son pocos o si nadie quedó mal parado. */
+  /** El más flojo. null si son pocos o si nadie quedó mal parado. */
   worst: RecapMember | null
   /** true si TODOS cumplieron todas las semanas: nadie merece la burla. */
   everyoneDelivered: boolean
@@ -160,7 +160,7 @@ export async function computeRecap(groupId: string, month: string, today: string
   // alfabético sería premiar la nada.
   const best = weeksEvaluated > 0 && top && top.checkIns > 0 ? top : null
 
-  // Y solo hay "huevón" si de verdad quedó atrás de alguien. Con un solo
+  // Y solo hay "flojo" si de verdad quedó atrás de alguien. Con un solo
   // miembro, con todos iguales o con todos cumpliendo, no se carga a nadie.
   const differentiated =
     Boolean(top && bottom) && (top!.weeksMet > bottom!.weeksMet || top!.checkIns > bottom!.checkIns)

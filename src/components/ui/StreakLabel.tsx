@@ -7,7 +7,7 @@ import { cn } from './cn'
  *
  * Prioridad: cuántos entrenos lleva en la racha (los descansos no la cortan
  * si cumplió la meta de la semana). Si no hay días, cuántas semanas viene
- * cumpliendo. Y si no hay nada, se dice sin vueltas: la racha está rota.
+ * cumpliendo. Y si no hay nada, se dice sin rodeos: la racha está rota.
  */
 export function StreakLabel({ streaks, className }: { streaks: Streaks; className?: string }) {
   if (streaks.daily > 0) {

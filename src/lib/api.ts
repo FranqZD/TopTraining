@@ -70,7 +70,7 @@ export interface Friend {
   friendCode: string
 }
 
-/** Cómo estás parado con alguien que aparece en la búsqueda. */
+/** Cómo estás con alguien que aparece en la búsqueda. */
 export type Relation = 'none' | 'pending_out' | 'pending_in' | 'friends'
 
 export interface SearchResult extends Friend {
@@ -84,7 +84,7 @@ export interface FriendRequest {
 }
 
 export interface FriendRequests {
-  /** Las que te mandaron y tenés que responder. */
+  /** Las que te mandaron y tienes que responder. */
   incoming: FriendRequest[]
   /** Las que mandaste y están esperando. */
   outgoing: FriendRequest[]
@@ -161,7 +161,7 @@ export interface VoteTally {
 /** `like` es el aura. El cupo es un de cada por cada entreno que marcaste. */
 export type VoteKind = 'like' | 'laura'
 
-/** Cuántos votos tenés puestos vs cuántos entrenos hiciste. */
+/** Cuántos votos tienes puestos vs cuántos entrenos hiciste. */
 export interface VoteWallet {
   budget: number
   like: number
@@ -346,12 +346,12 @@ export function weekDays(monday: string): string[] {
 }
 
 /**
- * Timestamp relativo en la voz de la app: corto y sin vueltas.
- * "recién", "hace 3 h", "hace 2 días", "hace 3 semanas".
+ * Timestamp relativo en la voz de la app: corto y sin rodeos.
+ * "ahora", "hace 3 h", "hace 2 días", "hace 3 semanas".
  */
 export function relativeTime(iso: string): string {
   const seconds = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000)
-  if (seconds < 60) return 'recién'
+  if (seconds < 60) return 'ahora'
   const minutes = Math.floor(seconds / 60)
   if (minutes < 60) return `hace ${minutes} min`
   const hours = Math.floor(minutes / 60)

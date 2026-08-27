@@ -18,7 +18,7 @@ import { generateClosedRecaps } from './recap.js'
  * El pedido daba rangos para tarde y noche; elegí el borde que deja margen
  * para reaccionar y no el que ya es tarde:
  *  - Mañana 10:00 — la mañana ya se fue, pero queda todo el día.
- *  - Tarde 17:00 — salida del laburo, con el gimnasio todavía abierto.
+ *  - Tarde 17:00 — salida del trabajo, con el gimnasio todavía abierto.
  *  - Noche 20:30 — dentro del rango 20–21, y todavía se llega a ir.
  */
 const NUDGE_TIME: Record<string, { hour: number; minute: number }> = {

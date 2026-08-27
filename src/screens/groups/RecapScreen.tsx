@@ -636,7 +636,7 @@ function shareText(recap: Recap, month: string): string {
 function verdict(completion: number): string {
   if (completion >= 0.9) return 'Impecable. Da un poquito de miedo.'
   if (completion >= 0.75) return 'Muy bien. El viaje está cerca.'
-  if (completion >= 0.5) return 'Ni fu ni fa. Se puede más.'
+  if (completion >= 0.5) return 'Más o menos. Se puede más.'
   if (completion >= 0.25) return 'Flojo. Miren la tabla y saquen conclusiones.'
   return 'Un desastre. Hablen entre ustedes.'
 }

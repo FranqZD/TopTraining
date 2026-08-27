@@ -35,8 +35,8 @@ export function GroupFeed({
       <FeedList
         sourceKey={`${groupId}:${epoch}`}
         loadPage={loadPage}
-        empty="Todavía no hay nada acá."
-        emptyHint="Marcá un entreno o escribí un post."
+        empty="Todavía no hay nada aquí."
+        emptyHint="Marca un entreno o escribe un post."
         onAuthor={(userId) => navigate(`/u/${userId}`)}
         groupId={groupId}
         canModerate={isOwner}

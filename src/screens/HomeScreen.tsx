@@ -169,10 +169,10 @@ export function HomeScreen() {
                   <span className="block text-title leading-tight">Marcar hoy</span>
                   <span className="block text-caption opacity-80 truncate">
                     {goal <= 0
-                      ? 'Un toque y queda registrado.'
+                      ? 'Toca y queda registrado.'
                       : missing > 0
                         ? `Te ${missing === 1 ? 'falta' : 'faltan'} ${missing} para la meta de ${goal}×`
-                        : `Meta de ${goal}× cumplida. Lo de hoy es de más.`}
+                        : `Meta de ${goal}× cumplida. Lo de hoy es extra.`}
                   </span>
                 </span>
                 <ChevronRight size={22} strokeWidth={3} className="shrink-0 opacity-70" />

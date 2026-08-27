@@ -50,7 +50,7 @@ export function DesignSystemScreen() {
             Training
           </h1>
           <p className="text-lead text-text-muted">
-            Entrenas con tus amigos. O te aguantas ser <span className="text-accent-text font-bold">el más huevón</span> del
+            Entrenas con tus amigos. O te aguantas ser <span className="text-accent-text font-bold">el más flojo</span> del
             grupo.
           </p>
         </header>
@@ -134,9 +134,9 @@ export function DesignSystemScreen() {
 
             <Card tone="base" interactive>
               <div className="flex items-center gap-3">
-                <div className="size-11 rounded-full bg-ink-800 grid place-items-center text-ink-300 font-bold">MG</div>
+                <div className="size-11 rounded-full bg-ink-800 grid place-items-center text-ink-300 font-bold">JG</div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold leading-tight">Martín G.</p>
+                  <p className="font-bold leading-tight">Juan G.</p>
                   <p className="text-caption text-text-faint">Piernas · hace 40 min</p>
                 </div>
                 <StreakBadge days={7} size="sm" />
@@ -146,7 +146,7 @@ export function DesignSystemScreen() {
             <Card tone="raised">
               <CardLabel>En riesgo</CardLabel>
               <div className="flex items-center justify-between gap-3">
-                <p className="text-body text-ink-200">Lucas no entrena hace 4 días.</p>
+                <p className="text-body text-ink-200">Diego no entrena hace 4 días.</p>
                 <StreakBadge days={0} state="risk" size="sm" />
               </div>
             </Card>
@@ -237,7 +237,7 @@ export function DesignSystemScreen() {
                 { value: 2, label: '2', hint: 'tibio' },
                 { value: 3, label: '3', hint: 'normal' },
                 { value: 4, label: '4', hint: 'en serio' },
-                { value: 6, label: '6', hint: 'te rompés' },
+                { value: 6, label: '6', hint: 'te rompes' },
               ]}
             />
           </Card>

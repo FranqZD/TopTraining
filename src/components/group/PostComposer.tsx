@@ -7,7 +7,7 @@ const MAX_BODY = 280
 
 /**
  * Publicar un texto en el grupo. No es un entreno: no suma racha ni se vota.
- * El teclado solo aparece cuando tocás para escribir.
+ * El teclado solo aparece cuando tocas para escribir.
  */
 export function PostComposer({ groupId, onPosted }: { groupId: string; onPosted: () => void }) {
   const [open, setOpen] = useState(false)
@@ -64,14 +64,14 @@ export function PostComposer({ groupId, onPosted }: { groupId: string; onPosted:
       <Sheet open={open} onClose={close} title={<span className="text-title">Post</span>}>
         <div className="flex flex-col gap-4">
           <label className="flex flex-col gap-2">
-            <span className="tape text-text-faint">Qué querés decir</span>
+            <span className="tape text-text-faint">Qué quieres decir</span>
             <textarea
               ref={field}
               value={body}
               onChange={(event) => setBody(event.target.value.slice(0, MAX_BODY))}
               maxLength={MAX_BODY}
               rows={5}
-              placeholder="Sueltalo todo hermano"
+              placeholder="Suéltalo todo"
               className="w-full min-h-32 px-4 py-3 rounded-[var(--radius-md)] bg-ink-900 border border-ink-700 outline-none text-body placeholder:text-ink-500 focus:border-accent transition-colors resize-none"
             />
             <span className="tape text-text-faint self-end">

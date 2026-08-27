@@ -107,7 +107,7 @@ export function PersonFeedScreen() {
                 sourceKey={userId}
                 loadPage={wrappedLoad}
                 empty={mine ? 'Todavía no marcaste ningún entrenamiento.' : 'Todavía no marcó ningún entrenamiento.'}
-                emptyHint={mine ? 'Un toque en Inicio y queda el primero.' : undefined}
+                emptyHint={mine ? 'Toca Inicio y queda el primero.' : undefined}
               />
             </div>
           </>

@@ -9,7 +9,7 @@ import { PhotoCarousel } from '../components/group/PhotoCarousel'
 
 /**
  * Check-in del día. Es LA acción de la app, así que el camino corto es
- * sagrado: se abre y se confirma de un toque. Foto (hasta 3) y comentario
+ * sagrado: se abre y se confirma al tocarlo. Foto (hasta 3) y comentario
  * son opcionales.
  *
  * También es la pantalla donde se corrige lo hecho. Marcar por error, olvidarse

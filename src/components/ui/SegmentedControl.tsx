@@ -4,7 +4,7 @@ import { cn } from './cn'
 
 /**
  * Alternador de 2–3 opciones con la píldora de acento deslizándose.
- * Reemplaza cualquier tab o dropdown: un toque, sin teclado.
+ * Reemplaza cualquier tab o dropdown: al tocarlo, sin teclado.
  */
 export interface SegmentedControlProps<T extends string> {
   options: { value: T; label: ReactNode }[]

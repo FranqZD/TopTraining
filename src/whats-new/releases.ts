@@ -64,7 +64,7 @@ export const RELEASES: Release[] = [
     items: [
       {
         icon: 'trophy',
-        title: 'Sin “la rompió” ni “el más huevón”',
+        title: 'Sin “quién la rompió” ni “el más flojo”',
         detail: 'El recap muestra cómo le fue al grupo y a cada uno. Nada de tarjetas para señalar.',
       },
     ],

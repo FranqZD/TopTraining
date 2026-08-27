@@ -205,7 +205,7 @@ function SearchTab({ onRequestSent }: { onRequestSent?: (friend: Friend, status:
         name="q"
         value={query}
         onChange={(event) => setQuery(event.target.value)}
-        placeholder="Martín, Lucas…"
+        placeholder="Juan, Diego…"
         autoComplete="off"
         icon={<Search size={18} strokeWidth={2.5} />}
       />

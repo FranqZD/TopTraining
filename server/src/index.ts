@@ -1452,8 +1452,8 @@ app.post('/api/checkins', requireAuth, async (req, res) => {
  * el índice único (userId, day): filtra por userId y toma el primero por día
  * descendente, sin recorrer la tabla.
  *
- * Sin `userId` devuelve el propio; con `userId` solo si podés ver sus entrenos
- * (amigo, mismo grupo, o sos vos).
+ * Sin `userId` devuelve el propio; con `userId` solo si puedes ver sus entrenos
+ * (amigo, mismo grupo, o eres tú).
  */
 app.get('/api/checkins/latest', requireAuth, async (req, res) => {
   const requested = req.query.userId ? String(req.query.userId) : req.userId!
@@ -1629,7 +1629,7 @@ app.post('/api/checkins/:id/comments', requireAuth, async (req, res) => {
  * Votar un check-in.
  *
  * El cupo es un aura y una laura por cada entreno que marcaste. En un mismo
- * post es uno u otro. El mismo día lo podés sacar o cambiar; al día siguiente
+ * post es uno u otro. El mismo día lo puedes sacar o cambiar; al día siguiente
  * se queda.
  */
 app.post('/api/checkins/:id/votes', requireAuth, async (req, res) => {

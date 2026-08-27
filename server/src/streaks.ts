@@ -55,8 +55,8 @@ function weekMetGoal(days: Set<string>, monday: string, goal: number): boolean {
  * Racha diaria: entrenos seguidos, sin cortar por un día de descanso si esa
  * semana cumplió (o todavía puede cumplir) la meta personal.
  *
- * Si fallás el miércoles pero igual llegás a 4/4, esos 4 días siguen contando.
- * Se rompe recién cuando una semana ya terminada no llegó a la meta.
+ * Si fallas el miércoles pero igual llegas a 4/4, esos 4 días siguen contando.
+ * Se rompe solo cuando una semana ya terminada no llegó a la meta.
  *
  * Sin meta, vuelve a ser días corridos con check-in. Si todavía no marcó hoy,
  * la racha NO está rota: perderla a las 9 de la mañana sería una crueldad.

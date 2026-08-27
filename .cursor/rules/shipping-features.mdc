@@ -9,7 +9,7 @@ Detalle en `DESIGN_SYSTEM.md` §10. Sin esto, quien ya usa la app no se entera o
 
 ## Notas del parche
 
-Si el cambio se ve o se siente, copiá un bloque **arriba** de `RELEASES` en `src/whats-new/releases.ts`.
+Si el cambio se ve o se siente, copia un bloque **arriba** de `RELEASES` en `src/whats-new/releases.ts`.
 
 - `id` nueva (fecha; el mismo día, un sufijo).
 - Voz de producto, segunda persona. No es un changelog de ingeniería.
@@ -32,6 +32,6 @@ Hecho social → `fireAndForget` en `server/src/notify.ts` **después** de respo
 
 Un `kind` nuevo: `PREF_FIELD` → columna `notify…` default `true` → función en `notify.ts` → fila en `PushSettings` → `NotifyKey`.
 
-Si **no** debe avisar, decilo (v1 de posts de texto: no pita). No lo dejes implícito.
+Si **no** debe avisar, dilo (v1 de posts de texto: no pita). No lo dejes implícito.
 
 El permiso del navegador nunca se pide al abrir la app.

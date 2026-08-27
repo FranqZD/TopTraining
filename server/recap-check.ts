@@ -109,7 +109,7 @@ async function main() {
 
   console.log('\ndestacados')
   check('el mejor es Ana', recap.best?.name, 'Ana')
-  check('el más huevón es Beto', recap.worst?.name, 'Beto')
+  check('el más flojo es Beto', recap.worst?.name, 'Beto')
   check('Ana es REY', by('Ana').title, 'rey')
   check('Beto no tiene título (nunca cumplió una semana)', by('Beto').title, null)
   check('Caro es POLLITO (la más nueva)', by('Caro').title, 'pollito')
@@ -143,7 +143,7 @@ async function main() {
   }
   await prisma.checkIn.createMany({ data: perfect })
   const flawless = (await computeRecap(`${PREFIX}grupo`, MONTH, TODAY))!
-  check('si cumplieron todos, nadie es el huevón', flawless.worst, null)
+  check('si cumplieron todos, nadie es el flojo', flawless.worst, null)
   check('y el grupo queda en 100%', flawless.completion, 1)
   check('everyoneDelivered en true', flawless.everyoneDelivered, true)
   check('Beto es REY (más racha y entrenos)', flawless.members.find((member) => member.name === 'Beto')!.title, 'rey')

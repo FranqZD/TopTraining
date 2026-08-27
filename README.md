@@ -26,7 +26,7 @@ npm run dev     # web en :5173 + api en :8787
 de Vite (`/api` → `:8787`), así que en desarrollo todo es el mismo origen y la
 cookie de sesión no necesita CORS.
 
-Con esto ya podés registrarte con email y contraseña. Google y Apple están
+Con esto ya puedes registrarte con email y contraseña. Google y Apple están
 pausados: el login no los ofrece.
 
 ## Sesión
@@ -61,7 +61,7 @@ de uso. Es una app de uso diario: nadie debería volver a ver el login.
 | `GET` | `/api/checkins/:id` | detalle con comentarios y votos |
 | `POST` | `/api/checkins/:id/votes` | aura (`like`) o `laura`: uno de cada por día y solo si entrenaste |
 | `POST` | `/api/checkins/:id/comments` | comentar el entrenamiento de otro |
-| `GET` | `/api/users/:id/feed` | entrenos de una persona (vos, amigo o mismo grupo) |
+| `GET` | `/api/users/:id/feed` | entrenos de una persona (tú, un amigo o el mismo grupo) |
 | `GET` | `/api/groups/:id/feed` | feed paginado por cursor (`?cursor=&limit=`; `?day=` para un día) |
 | `GET` | `/api/groups/:id/calendar` | grilla mensual del grupo (`?month=`) |
 | `POST` | `/api/push/subscribe` · `/unsubscribe` | registrar o dar de baja un dispositivo |
@@ -160,7 +160,7 @@ Tres reglas para que el recap no diga tonterías:
 
 - Si no entrenó **nadie**, no hay "mejor": coronar al primero por orden
   alfabético sería premiar la nada.
-- Solo hay "más huevón" si de verdad quedó atrás de alguien. Con un solo
+- Solo hay "más flojo" si de verdad quedó atrás de alguien. Con un solo
   miembro, con todos empatados o con todos cumpliendo, no se carga a nadie.
 - Si cumplieron todos, la tarjeta de burla se reemplaza por una felicitación.
 
