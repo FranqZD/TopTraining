@@ -7,8 +7,8 @@ import { api, localDay, ApiError, type Friend, type PersonFeedPage, type Streaks
 import { useProfile } from '../profile/useProfile'
 
 /**
- * Los entrenos de una persona. Se abre tocando su nombre o avatar en el feed,
- * los miembros del grupo, el recap o la lista de amigos.
+ * Los entrenos de una persona. El tuyo se abre tocando la foto en Inicio;
+ * el de otro, tocando su nombre o avatar en el feed, el grupo o amigos.
  */
 export function PersonFeedScreen() {
   const { userId } = useParams()
@@ -71,7 +71,7 @@ export function PersonFeedScreen() {
           >
             <ArrowLeft size={22} strokeWidth={2.5} />
           </button>
-          <h1 className="text-headline truncate">{mine ? 'Tus entrenos' : 'Entrenos'}</h1>
+          <h1 className="text-headline truncate">{mine ? 'Tu perfil' : 'Entrenos'}</h1>
         </header>
 
         {forbidden && !person ? (

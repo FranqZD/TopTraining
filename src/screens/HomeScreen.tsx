@@ -88,13 +88,17 @@ export function HomeScreen() {
     <div className="min-h-dvh bg-canvas">
       <div className="app-frame max-w-[440px] flex flex-col gap-7">
         <header className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
+          <Link
+            to={`/u/${profile.id}`}
+            aria-label="Ver tu perfil"
+            className="pressable flex items-center gap-3 min-w-0 min-h-[var(--size-touch)] -my-1 pr-2 rounded-[var(--radius-sm)]"
+          >
             <Avatar name={profile.name} image={profile.image} />
             <div className="min-w-0">
               <p className="tape text-text-faint">Hola</p>
               <p className="text-title truncate">{profile.name}</p>
             </div>
-          </div>
+          </Link>
           <div className="flex items-center gap-2 shrink-0">
             {/* Sin tarjeta, las solicitudes pendientes se verían recién al
                 entrar: el contador es lo que las mantiene a la vista. */}

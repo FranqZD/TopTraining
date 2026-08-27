@@ -7,7 +7,7 @@
  * Checklist: DESIGN_SYSTEM.md §10.
  */
 
-export type ReleaseIcon = 'camera' | 'bell' | 'ghost' | 'bar' | 'trophy' | 'pen' | 'lock' | 'flame'
+export type ReleaseIcon = 'camera' | 'bell' | 'ghost' | 'bar' | 'trophy' | 'pen' | 'lock' | 'flame' | 'user'
 
 export interface ReleaseItem {
   icon: ReleaseIcon
@@ -25,6 +25,19 @@ export interface Release {
 }
 
 export const RELEASES: Release[] = [
+  {
+    id: '2026.08.27-profile',
+    dateLabel: '27 ago 2026',
+    title: 'Tu perfil desde Inicio',
+    tagline: 'Un toque en tu foto y ves lo que publicaste.',
+    items: [
+      {
+        icon: 'user',
+        title: 'Tocá tu foto',
+        detail: 'En Inicio, tu cara abre tu perfil con tus entrenos.',
+      },
+    ],
+  },
   {
     id: '2026.08.27-recap-cards',
     dateLabel: '27 ago 2026',
