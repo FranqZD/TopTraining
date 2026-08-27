@@ -114,6 +114,7 @@ CREATE TABLE IF NOT EXISTS "checkin" (
     "photoPublicId" TEXT,
     "photos" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "deletedAt" DATETIME,
     CONSTRAINT "checkin_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -143,6 +144,7 @@ CREATE TABLE IF NOT EXISTS "comment" (
     "userId" TEXT NOT NULL,
     "body" TEXT NOT NULL,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "deletedAt" DATETIME,
     CONSTRAINT "comment_checkInId_fkey" FOREIGN KEY ("checkInId") REFERENCES "checkin" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "comment_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
@@ -173,6 +175,7 @@ CREATE TABLE IF NOT EXISTS "group_post" (
     "body" TEXT NOT NULL,
     "day" TEXT NOT NULL,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "deletedAt" DATETIME,
     CONSTRAINT "group_post_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "group" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "group_post_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );

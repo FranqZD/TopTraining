@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Loader2, Trash2 } from 'lucide-react'
 import { Button, Card, CardLabel, Sheet } from '../ui'
 import { api, isGroupPost, localDay, shiftDay, type FeedItem, type FeedPage, type VoteResult, type VoteWallet } from '../../lib/api'
+import { GROUP_TEXT_POSTS } from '../../lib/features'
 import { CheckInSheet } from './CheckInSheet'
 import { FeedCard } from './FeedCard'
 import { applyVoteResult } from './VoteBar'
@@ -50,7 +51,8 @@ export function FeedList({
       setLoading(true)
       try {
         const page = await loadPage(from)
-        setItems((current) => (from ? [...current, ...page.items] : page.items))
+        const items = GROUP_TEXT_POSTS ? page.items : page.items.filter((item) => !isGroupPost(item))
+        setItems((current) => (from ? [...current, ...items] : items))
         setCursor(page.nextCursor)
         setExhausted(page.nextCursor === null)
         setCanVote(page.canVote)

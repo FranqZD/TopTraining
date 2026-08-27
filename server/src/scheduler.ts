@@ -109,9 +109,9 @@ export async function runNudgeSweep(at = new Date()): Promise<{ checked: number;
 
     const alreadyTrained = await prisma.checkIn.findUnique({
       where: { userId_day: { userId: user.id, day: now.day } },
-      select: { id: true },
+      select: { id: true, deletedAt: true },
     })
-    if (alreadyTrained) continue
+    if (alreadyTrained && !alreadyTrained.deletedAt) continue
 
     // Reservamos el envío ANTES de mandarlo. Si la fila ya existe, alguien
     // (otra corrida, otro proceso) ya avisó hoy y acá no pasa nada.

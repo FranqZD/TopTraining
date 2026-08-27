@@ -26,6 +26,19 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    id: '2026.08.27-pause-posts',
+    dateLabel: '27 ago 2026',
+    title: 'El grupo, otra vez entrenos',
+    tagline: 'Escribir en el grupo se queda para después.',
+    items: [
+      {
+        icon: 'pen',
+        title: 'Sin posts de texto',
+        detail: 'En el grupo ves los entrenos, comentarios y votos. Escribir un aviso vuelve más adelante.',
+      },
+    ],
+  },
+  {
     id: '2026.08.27-group-gear',
     dateLabel: '27 ago 2026',
     title: 'El grupo, en el engranaje',

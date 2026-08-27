@@ -211,6 +211,8 @@ model GroupPost {
   /// Día local de quien lo publicó, "YYYY-MM-DD". Agrupa el feed.
   day       String
   createdAt DateTime @default(now())
+  /// Oculto, no borrado. Las lecturas de producto lo ignoran.
+  deletedAt DateTime?
 
   group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -235,6 +237,8 @@ model CheckIn {
   /// tienen: se lee `photoUrl` como lista de una.
   photos        String?
   createdAt DateTime @default(now())
+  /// Oculto, no borrado. Deshacer un entreno no tira comentarios ni fotos.
+  deletedAt DateTime?
 
   /// Además de garantizar un check-in por día, este índice único es el que
   /// resuelve "último check-in de un usuario" (userId + day desc) sin scan.
@@ -310,6 +314,8 @@ model Comment {
   userId    String
   body      String
   createdAt DateTime @default(now())
+  /// Oculto, no borrado.
+  deletedAt DateTime?
 
   checkIn CheckIn @relation(fields: [checkInId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)

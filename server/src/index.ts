@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { auth, enabledProviders, isTrustedOrigin } from './auth.js'
 import { prisma } from './db.js'
 import { generateGroupCode } from './codes.js'
-import { deletePhoto, deleteRemovedPhotos, feedPhotoFields, imageTransformBase, isOwnPhotoUrl, MAX_CHECKIN_PHOTOS, parseCheckInPhotos, persistPhotos, publicPhotos, putCheckInPhoto, storageConfigured } from './storage.js'
+import { deleteRemovedPhotos, feedPhotoFields, imageTransformBase, isOwnPhotoUrl, MAX_CHECKIN_PHOTOS, parseCheckInPhotos, persistPhotos, publicPhotos, putCheckInPhoto, storageConfigured } from './storage.js'
 import { computeStreaks, shiftDay, weekDays, weekStart } from './streaks.js'
 import { computePet } from './pets.js'
 import { pushConfigured, sendToUser, vapidPublicKey } from './push.js'
@@ -20,6 +20,8 @@ import {
 import { runNudgeSweep, startScheduler } from './scheduler.js'
 import { generateClosedRecaps, getRecap } from './recap.js'
 import { ensureSchema } from './ensure-schema.js'
+import { GROUP_TEXT_POSTS } from './features.js'
+import { hiddenAt, isHidden } from './soft-delete.js'
 import type { Request, Response, NextFunction } from 'express'
 
 const PORT = Number(process.env.PORT ?? 8787)
@@ -1055,16 +1057,16 @@ async function decodeFeedCursor(raw?: string): Promise<FeedCursor | null> {
   if (raw.startsWith('post:')) {
     const row = await prisma.groupPost.findUnique({
       where: { id: raw.slice(5) },
-      select: { id: true, day: true, createdAt: true },
+      select: { id: true, day: true, createdAt: true, deletedAt: true },
     })
-    return row ? { kind: 'post', ...row } : null
+    return row && !row.deletedAt ? { kind: 'post', id: row.id, day: row.day, createdAt: row.createdAt } : null
   }
   const id = raw.startsWith('checkin:') ? raw.slice(8) : raw
   const row = await prisma.checkIn.findUnique({
     where: { id },
-    select: { id: true, day: true, createdAt: true },
+    select: { id: true, day: true, createdAt: true, deletedAt: true },
   })
-  return row ? { kind: 'checkin', ...row } : null
+  return row && !row.deletedAt ? { kind: 'checkin', id: row.id, day: row.day, createdAt: row.createdAt } : null
 }
 
 /** Lo que va después en el feed: día más viejo, o el mismo día más temprano. */
@@ -1114,7 +1116,8 @@ app.get('/api/groups/:id/feed', requireAuth, async (req, res) => {
       include: { user: { select: FRIEND_SELECT }, _count: { select: { comments: true } } },
     }),
     // El calendario abre un día de entrenos: los posts no van ahí.
-    day
+    // GROUP_TEXT_POSTS apagado: el composer y las filas se quedan en código.
+    day || !GROUP_TEXT_POSTS
       ? Promise.resolve([])
       : prisma.groupPost.findMany({
           where: { groupId, ...(older ?? {}) },
@@ -1202,6 +1205,11 @@ const groupPostSchema = z.object({
 })
 
 app.post('/api/groups/:id/posts', requireAuth, async (req, res) => {
+  if (!GROUP_TEXT_POSTS) {
+    res.status(404).json({ error: 'Ese grupo no existe o no eres miembro' })
+    return
+  }
+
   const groupId = String(req.params.id)
   if (!(await membershipOf(groupId, req.userId!))) {
     res.status(404).json({ error: 'Ese grupo no existe o no eres miembro' })
@@ -1262,7 +1270,7 @@ app.delete('/api/groups/:id/posts/:postId', requireAuth, async (req, res) => {
   }
 
   const post = await prisma.groupPost.findFirst({
-    where: { id: String(req.params.postId), groupId },
+    where: { id: String(req.params.postId), groupId, deletedAt: null },
   })
   if (!post) {
     res.status(404).json({ error: 'Ese post no existe' })
@@ -1276,7 +1284,7 @@ app.delete('/api/groups/:id/posts/:postId', requireAuth, async (req, res) => {
     return
   }
 
-  await prisma.groupPost.delete({ where: { id: post.id } })
+  await prisma.groupPost.update({ where: { id: post.id }, data: hiddenAt() })
   res.json({ ok: true })
 })
 
@@ -1429,10 +1437,10 @@ function photosFromBody(data: {
   return []
 }
 
-function toCheckIn<T extends { photos?: string | null; photoUrl?: string | null; photoPublicId?: string | null }>(
+function toCheckIn<T extends { photos?: string | null; photoUrl?: string | null; photoPublicId?: string | null; deletedAt?: Date | null }>(
   row: T,
 ) {
-  const { photos: _stored, ...rest } = row
+  const { photos: _stored, deletedAt: _hidden, ...rest } = row
   return { ...rest, ...publicPhotos(row) }
 }
 
@@ -1501,25 +1509,33 @@ app.post('/api/checkins', requireAuth, async (req, res) => {
     return
   }
 
-  // Uno por día. Si ya entrenó hoy no pisamos nada: devolvemos el que existe
-  // para que la pantalla muestre "ya entrenaste hoy" en vez de duplicar.
+  // Uno por día. Si lo deshizo, la fila sigue: se reusa. Si está vivo, 409.
   const existing = await prisma.checkIn.findUnique({
     where: { userId_day: { userId: req.userId!, day: parsed.data.day } },
   })
-  if (existing) {
+  if (existing && !existing.deletedAt) {
     res.status(409).json({ error: 'Ya marcaste el entrenamiento de hoy', checkIn: toCheckIn(existing) })
     return
   }
 
-  const checkIn = await prisma.checkIn.create({
-    data: {
-      userId: req.userId!,
-      day: parsed.data.day,
-      note: parsed.data.note,
-      ...persistPhotos(photos),
-    },
-  })
-  res.status(201).json(toCheckIn(checkIn))
+  const checkIn = existing
+    ? await prisma.checkIn.update({
+        where: { id: existing.id },
+        data: {
+          note: parsed.data.note,
+          ...persistPhotos(photos),
+          deletedAt: null,
+        },
+      })
+    : await prisma.checkIn.create({
+        data: {
+          userId: req.userId!,
+          day: parsed.data.day,
+          note: parsed.data.note,
+          ...persistPhotos(photos),
+        },
+      })
+  res.status(existing ? 200 : 201).json(toCheckIn(checkIn))
 
   fireAndForget(notifyNewCheckIn(checkIn))
 })
@@ -1575,16 +1591,23 @@ app.get('/api/checkins/:id', requireAuth, async (req, res) => {
     where: { id: String(req.params.id) },
     include: { user: { select: FRIEND_SELECT }, comments: { select: COMMENT_SELECT, orderBy: { createdAt: 'asc' } } },
   })
-  if (!checkIn || !(await canViewUserCheckIns(req.userId!, checkIn.userId))) {
+  if (!checkIn || isHidden(checkIn) || !(await canViewUserCheckIns(req.userId!, checkIn.userId))) {
     res.status(404).json({ error: 'Ese entrenamiento no existe o no lo puedes ver' })
     return
   }
+  const { comments, ...row } = checkIn
   const today = todayFor(req)
   const [votes, wallet] = await Promise.all([
     tallyVotes(checkIn.id, req.userId!, today),
     voteWalletOf(req.userId!),
   ])
-  res.json({ ...toCheckIn(checkIn), votes, canVote: wallet.budget > 0, wallet })
+  res.json({
+    ...toCheckIn(row),
+    comments,
+    votes,
+    canVote: wallet.budget > 0,
+    wallet,
+  })
 })
 
 /** Comentar el check-in de alguien con quien compartís un grupo. */
@@ -1617,7 +1640,7 @@ app.patch('/api/checkins/:id', requireAuth, async (req, res) => {
 
   const checkIn = await prisma.checkIn.findUnique({ where: { id: String(req.params.id) } })
   // Solo el dueño: comentar el entreno ajeno sí, editarlo no.
-  if (!checkIn || checkIn.userId !== req.userId) {
+  if (!checkIn || isHidden(checkIn) || checkIn.userId !== req.userId) {
     res.status(404).json({ error: 'Ese entrenamiento no existe o no es tuyo' })
     return
   }
@@ -1653,20 +1676,16 @@ app.patch('/api/checkins/:id', requireAuth, async (req, res) => {
  * Deshacer un check-in. Vale para el de hoy y para cualquier otro propio:
  * si alguien marcó por error, tiene que poder arrepentirse.
  *
- * Los comentarios se van con él por la cascada del schema, y la foto se borra
- * de R2 para no dejar archivos huérfanos.
+ * No se borra la fila ni las fotos: se oculta. Los comentarios se quedan.
  */
 app.delete('/api/checkins/:id', requireAuth, async (req, res) => {
   const checkIn = await prisma.checkIn.findUnique({ where: { id: String(req.params.id) } })
-  if (!checkIn || checkIn.userId !== req.userId) {
+  if (!checkIn || isHidden(checkIn) || checkIn.userId !== req.userId) {
     res.status(404).json({ error: 'Ese entrenamiento no existe o no es tuyo' })
     return
   }
 
-  for (const photo of parseCheckInPhotos(checkIn)) {
-    if (photo.publicId) await deletePhoto(photo.publicId)
-  }
-  await prisma.checkIn.delete({ where: { id: checkIn.id } })
+  await prisma.checkIn.update({ where: { id: checkIn.id }, data: hiddenAt() })
   res.json({ ok: true })
 })
 
@@ -1679,9 +1698,9 @@ app.post('/api/checkins/:id/comments', requireAuth, async (req, res) => {
 
   const checkIn = await prisma.checkIn.findUnique({
     where: { id: String(req.params.id) },
-    select: { id: true, userId: true },
+    select: { id: true, userId: true, deletedAt: true },
   })
-  if (!checkIn || !(await sharesGroup(req.userId!, checkIn.userId))) {
+  if (!checkIn || isHidden(checkIn) || !(await sharesGroup(req.userId!, checkIn.userId))) {
     res.status(404).json({ error: 'Ese entrenamiento no existe o no lo puedes comentar' })
     return
   }
@@ -1729,9 +1748,9 @@ app.post('/api/checkins/:id/votes', requireAuth, async (req, res) => {
 
   const checkIn = await prisma.checkIn.findUnique({
     where: { id: checkInId },
-    select: { id: true, userId: true },
+    select: { id: true, userId: true, deletedAt: true },
   })
-  if (!checkIn || !(await canViewUserCheckIns(userId, checkIn.userId))) {
+  if (!checkIn || isHidden(checkIn) || !(await canViewUserCheckIns(userId, checkIn.userId))) {
     res.status(404).json({ error: 'Ese entrenamiento no existe o no lo puedes votar' })
     return
   }

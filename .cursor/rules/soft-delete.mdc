@@ -1,0 +1,23 @@
+---
+description: Nunca borrar filas de contenido. Soft delete con deletedAt.
+alwaysApply: true
+---
+
+# Soft delete
+
+Contenido de usuarios (entrenos, comentarios, posts, grupos) **no se borra**. Se oculta con `deletedAt`.
+
+```ts
+// ❌
+await prisma.comment.deleteMany()
+await prisma.checkIn.delete({ where: { id } })
+
+// ✅
+await prisma.checkIn.update({ where: { id }, data: { deletedAt: new Date() } })
+```
+
+Las lecturas de producto ya filtran `deletedAt: null` (extensión en `db.ts`). `findUnique` no: si el row tiene `deletedAt`, es 404.
+
+No borres archivos de R2 al deshacer un entreno: la fila sigue existiendo.
+
+Excepciones (no es contenido): tests/seeds con prefijo, quitar un voto, push de un dispositivo muerto, `push_log` de idempotencia.

@@ -68,7 +68,12 @@ export async function ensureSchema(): Promise<void> {
       ['petName', 'TEXT'],
     ])
 
-    await addMissingColumns(client, 'checkin', [['photos', 'TEXT']])
+    await addMissingColumns(client, 'checkin', [
+      ['photos', 'TEXT'],
+      ['deletedAt', 'DATETIME'],
+    ])
+    await addMissingColumns(client, 'comment', [['deletedAt', 'DATETIME']])
+    await addMissingColumns(client, 'group_post', [['deletedAt', 'DATETIME']])
 
     // El cupo pasó a ser por entrenos, no uno por día: el índice único
     // (userId, day, kind) hay que sacarlo o no se pueden dar varios el mismo día.
