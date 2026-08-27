@@ -34,7 +34,7 @@ export const RELEASES: Release[] = [
       {
         icon: 'pen',
         title: 'Sin posts de texto',
-        detail: 'En el grupo ves los entrenos, comentarios y votos. Escribir un aviso vuelve más adelante.',
+        detail: 'En el grupo ves los entrenos y los votos. Escribir un aviso vuelve más adelante.',
       },
     ],
   },
@@ -153,7 +153,7 @@ export const RELEASES: Release[] = [
       {
         icon: 'pen',
         title: 'Escribe en el grupo',
-        detail: 'Un post de texto, sin votos ni comentarios. No cuenta como entreno.',
+        detail: 'Un post de texto, sin votos. No cuenta como entreno.',
       },
     ],
   },
