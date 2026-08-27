@@ -14,7 +14,9 @@ import { JoinGroupScreen } from './screens/groups/JoinGroupScreen'
 import { GroupDetailScreen } from './screens/groups/GroupDetailScreen'
 import { RecapScreen } from './screens/groups/RecapScreen'
 import { PersonFeedScreen } from './screens/PersonFeedScreen'
+import { WhatsNewScreen } from './screens/WhatsNewScreen'
 import { DesignSystemScreen } from './showcase/DesignSystemScreen'
+import { unseenReleases } from './whats-new/seen'
 
 /**
  * El tema sale del perfil, así que viaja con la cuenta: si el usuario elige
@@ -33,7 +35,8 @@ export default function App() {
     >
       <Routes>
         <Route path="/login" element={<PublicOnly><LoginScreen /></PublicOnly>} />
-        <Route path="/onboarding" element={<RequireAuth skipOnboardingGuard><OnboardingScreen /></RequireAuth>} />
+        <Route path="/onboarding" element={<RequireAuth skipOnboardingGuard skipWhatsNew><OnboardingScreen /></RequireAuth>} />
+        <Route path="/whats-new" element={<RequireAuth skipWhatsNew><WhatsNewScreen /></RequireAuth>} />
         <Route path="/settings" element={<RequireAuth><SettingsScreen /></RequireAuth>} />
         <Route path="/friends" element={<RequireAuth><FriendsScreen /></RequireAuth>} />
         <Route path="/checkin" element={<RequireAuth><CheckInScreen /></RequireAuth>} />
@@ -60,7 +63,15 @@ function Splash() {
   )
 }
 
-function RequireAuth({ children, skipOnboardingGuard }: { children: React.ReactNode; skipOnboardingGuard?: boolean }) {
+function RequireAuth({
+  children,
+  skipOnboardingGuard,
+  skipWhatsNew,
+}: {
+  children: React.ReactNode
+  skipOnboardingGuard?: boolean
+  skipWhatsNew?: boolean
+}) {
   const { profile, loading } = useProfile()
   const location = useLocation()
 
@@ -68,6 +79,10 @@ function RequireAuth({ children, skipOnboardingGuard }: { children: React.ReactN
   if (!profile) return <Navigate to="/login" replace state={{ from: location.pathname }} />
   // Mientras el onboarding esté incompleto, la app entera lleva ahí.
   if (!profile.onboardingCompleted && !skipOnboardingGuard) return <Navigate to="/onboarding" replace />
+  // Parche nuevo en este dispositivo: las notas van antes que cualquier pantalla.
+  if (!skipWhatsNew && unseenReleases().length > 0) {
+    return <Navigate to="/whats-new" replace state={{ from: location.pathname + location.search }} />
+  }
 
   return <>{children}</>
 }

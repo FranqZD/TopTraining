@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { motion } from 'motion/react'
 import {
   ArrowLeft,
+  Banana,
   Check,
   ChevronDown,
   ChevronLeft,
@@ -55,6 +57,7 @@ export function RecapScreen() {
   const ranked = useMemo(() => rankBy(recap?.members ?? [], metric), [recap, metric])
   /** Semanas del mes: manda el que más trae, así el ancho no baila por fila. */
   const weekCount = ranked.reduce((most, member) => Math.max(most, member.weeklyCheckIns?.length ?? 0), 0)
+  const me = recap?.members.find((member) => member.id === profile?.id)
 
   if (notFound) {
     return (
@@ -107,14 +110,18 @@ export function RecapScreen() {
             <Loader2 size={26} strokeWidth={2.5} className="animate-spin text-accent" />
           </div>
         ) : recap.completion === null ? (
-          <Card tone="outline" className="text-center">
-            <p className="text-body text-ink-200">Todavía no hay nada que contar.</p>
-            <p className="text-caption text-text-faint mt-1">
-              El recap empieza cuando termina la primera semana del mes.
-            </p>
-          </Card>
+          <>
+            {me && <MyVotes member={me} />}
+            <Card tone="outline" className="text-center">
+              <p className="text-body text-ink-200">Todavía no hay nada que contar.</p>
+              <p className="text-caption text-text-faint mt-1">
+                El recap empieza cuando termina la primera semana del mes.
+              </p>
+            </Card>
+          </>
         ) : (
           <>
+            {me && <MyVotes member={me} />}
             <GroupCard recap={recap} month={month} />
 
             {/* --- Los dos extremos del mes, uno al lado del otro --- */}
@@ -225,6 +232,59 @@ export function RecapScreen() {
 }
 
 /* --- Tarjeta de arriba ---------------------------------------------------- */
+
+/** Auras y lauras que te dejaron en los entrenos de este mes. */
+function MyVotes({ member }: { member: RecapMember }) {
+  const likes = member.likes ?? 0
+  const lauras = member.lauras ?? 0
+
+  return (
+    <Card className="flex flex-col gap-3">
+      <CardLabel className="mb-0">Te dieron este mes</CardLabel>
+      <div className="grid grid-cols-2 gap-3">
+        <VoteStat
+          icon={<Flame size={18} strokeWidth={2.5} fill="currentColor" />}
+          value={likes}
+          label={likes === 1 ? 'Aura' : 'Auras'}
+          tone="success"
+        />
+        <VoteStat
+          icon={<Banana size={18} strokeWidth={2.5} fill="currentColor" />}
+          value={lauras}
+          label={lauras === 1 ? 'Laura' : 'Lauras'}
+          tone="danger"
+        />
+      </div>
+    </Card>
+  )
+}
+
+function VoteStat({
+  icon,
+  value,
+  label,
+  tone,
+}: {
+  icon: ReactNode
+  value: number
+  label: string
+  tone: 'success' | 'danger'
+}) {
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-3 rounded-[var(--radius-md)] px-3 py-2.5 border',
+        tone === 'success' ? 'bg-success-tint border-success/40 text-success' : 'bg-danger-tint border-danger/40 text-danger',
+      )}
+    >
+      <span className="shrink-0">{icon}</span>
+      <div className="min-w-0">
+        <p className={cn('num text-headline leading-none', tone === 'success' ? 'text-success' : 'text-danger')}>{value}</p>
+        <p className="tape mt-1.5 text-current opacity-80">{label}</p>
+      </div>
+    </div>
+  )
+}
 
 /**
  * Entrenos del grupo contra su techo: la meta de cada uno por cada semana que

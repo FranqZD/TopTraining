@@ -238,6 +238,10 @@ export interface RecapMember {
   title?: RecapTitle | null
   /** Entrenos de cada semana del mes. Los recaps viejos pueden no traerlo. */
   weeklyCheckIns?: number[]
+  /** Auras que le dieron este mes. Falta en recaps viejos. */
+  likes?: number
+  /** Lauras que le dieron este mes. Falta en recaps viejos. */
+  lauras?: number
 }
 
 export type RecapTitle = 'rey' | 'enrachado' | 'huevon' | 'pollito'

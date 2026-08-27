@@ -78,6 +78,18 @@ async function main() {
 
   await prisma.checkIn.createMany({ data: days })
 
+  const anaCheckIn = await prisma.checkIn.findUnique({
+    where: { userId_day: { userId: people[0]!.id, day: mondays[0]! } },
+  })
+  await prisma.vote.createMany({
+    data: [
+      { checkInId: anaCheckIn!.id, userId: people[1]!.id, kind: 'like', day: mondays[0]! },
+      { checkInId: anaCheckIn!.id, userId: people[2]!.id, kind: 'laura', day: mondays[0]! },
+      // El voto propio no suma.
+      { checkInId: anaCheckIn!.id, userId: people[0]!.id, kind: 'like', day: shiftDay(mondays[0]!, 1) },
+    ],
+  })
+
   const recap = (await computeRecap(`${PREFIX}grupo`, MONTH, TODAY))!
   const by = (name: string) => recap.members.find((member) => member.name === name)!
 
@@ -92,6 +104,8 @@ async function main() {
   check('Beto no cumple ninguna (se puso 5 y hace 2)', [by('Beto').weeksMet, by('Beto').goal], [0, 5])
   check('Caro cumple 2 de 4', by('Caro').weeksMet, 2)
   check('la racha más larga de Caro es 4', by('Caro').longestStreak, 4)
+  check('Ana recibió 1 aura y 1 laura', [by('Ana').likes, by('Ana').lauras], [1, 1])
+  check('Beto no recibió votos', [by('Beto').likes, by('Beto').lauras], [0, 0])
 
   console.log('\ndestacados')
   check('el mejor es Ana', recap.best?.name, 'Ana')

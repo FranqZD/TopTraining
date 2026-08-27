@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { motion } from 'motion/react'
-import { ArrowLeft, Check, KeyRound, LogOut, Moon, Sunrise, Sun } from 'lucide-react'
+import { ArrowLeft, Check, KeyRound, LogOut, Moon, Newspaper, Sunrise, Sun } from 'lucide-react'
 import {
   Button,
   CardLabel,
@@ -133,6 +133,20 @@ function SettingsForm({ profile }: { profile: Profile }) {
 
         {/* --- Contraseña --- */}
         <PasswordSection />
+
+        <Section label="La app">
+          <button
+            type="button"
+            onClick={() => navigate('/whats-new', { state: { from: '/settings' } })}
+            className="pressable flex items-center gap-3 w-full min-h-[var(--size-control)] px-4 rounded-[var(--radius-md)] bg-ink-850 border border-ink-700 text-left cursor-pointer hover:border-ink-600"
+          >
+            <Newspaper size={20} strokeWidth={2.5} className="text-ink-200 shrink-0" />
+            <span className="flex-1 min-w-0">
+              <span className="block font-bold leading-tight">Notas del parche</span>
+              <span className="block text-caption text-text-faint">Qué se sumó en este teléfono</span>
+            </span>
+          </button>
+        </Section>
 
         <div className="pt-2 pb-10">
           <Button

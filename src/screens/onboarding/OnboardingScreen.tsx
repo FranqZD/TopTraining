@@ -8,6 +8,7 @@ import type { TrainingSlot } from '../../lib/api'
 import { StepShell } from './StepShell'
 import { StepFriends } from './StepFriends'
 import { StepFrequency } from './StepFrequency'
+import { markReleasesSeen } from '../../whats-new/seen'
 
 const TOTAL_STEPS = 4
 
@@ -40,6 +41,7 @@ export function OnboardingScreen() {
     setFinishing(true)
     try {
       await update({ onboardingCompleted: true })
+      markReleasesSeen()
       navigate('/', { replace: true })
     } finally {
       setFinishing(false)

@@ -37,6 +37,10 @@ export interface RecapMember {
    * escapen días al mes. Las primeras `weeksEvaluated` ya terminaron.
    */
   weeklyCheckIns: number[]
+  /** Auras recibidas en los entrenos de este mes. */
+  likes: number
+  /** Lauras recibidas en los entrenos de este mes. */
+  lauras: number
 }
 
 export interface Recap {
@@ -91,7 +95,7 @@ export async function computeRecap(groupId: string, month: string, today: string
       // siguiente, y un par de meses atrás para las rachas que cruzan el corte.
       day: { gte: lookback, lte: mondays.length ? maxDay(to, lastDayOfWeeks(mondays)) : to },
     },
-    select: { userId: true, day: true },
+    select: { id: true, userId: true, day: true },
   })
 
   const daysByUser = new Map<string, Set<string>>()
@@ -101,9 +105,13 @@ export async function computeRecap(groupId: string, month: string, today: string
     daysByUser.set(checkIn.userId, set)
   }
 
+  const monthCheckIns = checkIns.filter((row) => row.day >= from && row.day <= to)
+  const votesByUser = await votesReceivedByUser(monthCheckIns)
+
   const drafted = group.members.map((member) => {
     const days = daysByUser.get(member.userId) ?? new Set<string>()
     const goal = member.personalGoal ?? group.baseGoal
+    const votes = votesByUser.get(member.userId) ?? { likes: 0, lauras: 0 }
 
     const summaries = summarizeWeeks(days, mondays, goal, today)
     // Solo las semanas ya terminadas: la que está corriendo todavía puede
@@ -125,6 +133,8 @@ export async function computeRecap(groupId: string, month: string, today: string
       joinedAt: member.joinedAt.getTime(),
       weekly: weeklyStreak(days, goal, asOf),
       recentlyBroken: recentlyBroken(days, asOf, weeks),
+      likes: votes.likes,
+      lauras: votes.lauras,
     }
   })
 
@@ -180,6 +190,31 @@ function lastDayOfWeeks(mondays: string[]): string {
 
 function maxDay(a: string, b: string): string {
   return a > b ? a : b
+}
+
+/** Auras y lauras por dueño del check-in. El voto propio no cuenta. */
+async function votesReceivedByUser(
+  monthCheckIns: { id: string; userId: string }[],
+): Promise<Map<string, { likes: number; lauras: number }>> {
+  const tally = new Map<string, { likes: number; lauras: number }>()
+  if (monthCheckIns.length === 0) return tally
+
+  const ownerOf = new Map(monthCheckIns.map((row) => [row.id, row.userId]))
+  const votes = await prisma.vote.findMany({
+    where: { checkInId: { in: monthCheckIns.map((row) => row.id) } },
+    select: { checkInId: true, userId: true, kind: true },
+  })
+
+  for (const vote of votes) {
+    const ownerId = ownerOf.get(vote.checkInId)
+    if (!ownerId || ownerId === vote.userId) continue
+    const current = tally.get(ownerId) ?? { likes: 0, lauras: 0 }
+    if (vote.kind === 'like') current.likes += 1
+    else if (vote.kind === 'laura') current.lauras += 1
+    tally.set(ownerId, current)
+  }
+
+  return tally
 }
 
 type DraftMember = Omit<RecapMember, 'title'> & {
