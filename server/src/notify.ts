@@ -122,17 +122,25 @@ export async function notifyVote(vote: {
 }): Promise<void> {
   if (vote.voterId === vote.ownerId) return
 
-  const voter = await prisma.user.findUnique({
-    where: { id: vote.voterId },
-    select: { name: true },
-  })
-  if (!voter) return
-
   const aura = vote.kind === 'like'
+
+  // Aura sí dice quién. Laura no: el chiste se cae si ves el nombre.
+  let title: string
+  if (aura) {
+    const voter = await prisma.user.findUnique({
+      where: { id: vote.voterId },
+      select: { name: true },
+    })
+    if (!voter) return
+    title = `${voter.name} te dio aura`
+  } else {
+    title = 'Te dieron laura'
+  }
+
   await sendToUser(
     vote.ownerId,
     {
-      title: `${voter.name} te dio ${aura ? 'aura' : 'laura'}`,
+      title,
       body: aura ? 'Tu entreno de hoy le gustó a alguien.' : 'No a todos les convenció tu entreno.',
       url: `/u/${vote.ownerId}`,
       tag: `vote:${vote.checkInId}:${vote.voterId}`,
