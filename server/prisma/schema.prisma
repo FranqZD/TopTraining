@@ -164,8 +164,9 @@ model Group {
   @@map("group")
 }
 
-/// Recap mensual congelado. Se genera el día 1 para el mes que terminó y no
-/// se vuelve a tocar: es una foto de cómo le fue al grupo ese mes.
+/// Recap mensual congelado. Se genera cuando cierra la última semana del mes
+/// (el domingo de esa semana ya pasó) y no se vuelve a tocar: es una foto de
+/// cómo le fue al grupo ese mes.
 ///
 /// `data` guarda el recap ya calculado en JSON. Es un snapshot de presentación,
 /// no una fuente de verdad: si mañana alguien borra un check-in viejo, el

@@ -149,6 +149,39 @@ async function main() {
   check('Beto es REY (más racha y entrenos)', flawless.members.find((member) => member.name === 'Beto')!.title, 'rey')
   check('Ana es ENRACHADA (2+ semanas)', flawless.members.find((member) => member.name === 'Ana')!.title, 'enrachado')
   check('Caro es ENRACHADA (gana a pollito)', flawless.members.find((member) => member.name === 'Caro')!.title, 'enrachado')
+
+  console.log('\nsemana partida (el recap cuenta la semana, no el mes calendario)')
+  const anaId = people[0]!.id
+  const groupId = `${PREFIX}grupo`
+  const anaOf = (recap: NonNullable<typeof recap>) => recap.members.find((member) => member.name === 'Ana')!
+
+  await prisma.checkIn.deleteMany({ where: { userId: { startsWith: PREFIX } } })
+  // Sábado 1 de agosto: última semana de julio (lun 27–dom 2). El mes calendario
+  // lo dejaría en agosto y julio quedaría 1 corto.
+  await prisma.checkIn.createMany({ data: [{ userId: anaId, day: '2026-08-01' }] })
+  const julySpill = anaOf((await computeRecap(groupId, '2026-07', '2026-08-19'))!)
+  check('el 1 de agosto cuenta en julio', julySpill.checkIns, 1)
+  check('julio: barras y total coinciden', julySpill.weeklyCheckIns.reduce((a, b) => a + b, 0), 1)
+
+  await prisma.checkIn.deleteMany({ where: { userId: { startsWith: PREFIX } } })
+  await prisma.checkIn.createMany({ data: [{ userId: anaId, day: '2026-07-01' }] })
+  check(
+    'el 1 de julio no cuenta en julio (es de la semana de junio)',
+    anaOf((await computeRecap(groupId, '2026-07', '2026-08-19'))!).checkIns,
+    0,
+  )
+
+  await prisma.checkIn.deleteMany({ where: { userId: { startsWith: PREFIX } } })
+  await prisma.checkIn.createMany({ data: [{ userId: anaId, day: '2026-09-01' }] })
+  const augOpen = (await computeRecap(groupId, '2026-08', '2026-09-01'))!
+  check('el 1 de sep cuenta en agosto', anaOf(augOpen).checkIns, 1)
+  check('el 1 de sep agosto sigue parcial: la última semana no cerró', augOpen.partial, true)
+  check('agosto el 1 de sep: 4 semanas evaluadas, no 5', augOpen.weeksEvaluated, 4)
+
+  const augDone = (await computeRecap(groupId, '2026-08', '2026-09-07'))!
+  check('el lunes 7 agosto ya cerró', augDone.partial, false)
+  check('agosto cerrado: 5 semanas evaluadas', augDone.weeksEvaluated, 5)
+  check('agosto cerrado: barras y total coinciden', anaOf(augDone).weeklyCheckIns.reduce((a, b) => a + b, 0), 1)
 }
 
 main()

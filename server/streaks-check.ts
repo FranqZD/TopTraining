@@ -1,4 +1,4 @@
-import { dailyStreak, weeklyStreak, weekStart, shiftDay, summarizeWeeks, longestStreak, monthWeeks, monthEnd, previousMonth } from './src/streaks.js'
+import { dailyStreak, weeklyStreak, weekStart, shiftDay, summarizeWeeks, longestStreak, monthWeeks, monthEnd, previousMonth, monthWeekSpan, monthWeeksClosed } from './src/streaks.js'
 
 let failures = 0
 function check(label: string, actual: unknown, expected: unknown) {
@@ -85,6 +85,20 @@ check('mes anterior cruza el año', previousMonth('2026-01'), '2025-12')
 check('los lunes de agosto 2026', monthWeeks('2026-08'), ['2026-08-03','2026-08-10','2026-08-17','2026-08-24','2026-08-31'])
 // Junio 2026 arranca lunes: ese mismo día es el primer lunes.
 check('si el mes arranca lunes, ese cuenta', monthWeeks('2026-06')[0], '2026-06-01')
+
+console.log('\nrango de semanas del recap')
+check('febrero 2026 (arranca domingo): del 2 al 1 de marzo', monthWeekSpan('2026-02'), {
+  start: '2026-02-02',
+  end: '2026-03-01',
+})
+check('el 1 de febrero no entra: es de la semana de enero', monthWeekSpan('2026-02')!.start > '2026-02-01', true)
+check('julio 2026: del 6 al 2 de agosto', monthWeekSpan('2026-07'), { start: '2026-07-06', end: '2026-08-02' })
+check('agosto 2026: del 3 al 6 de septiembre', monthWeekSpan('2026-08'), {
+  start: '2026-08-03',
+  end: '2026-09-06',
+})
+check('agosto no cierra el 1 de septiembre: la última semana sigue', monthWeeksClosed('2026-08', '2026-09-01'), false)
+check('agosto cierra el lunes 7, ya pasó el domingo 6', monthWeeksClosed('2026-08', '2026-09-07'), true)
 
 console.log(failures ? `\n${failures} fallo(s)` : '\nTodo OK')
 process.exit(failures ? 1 : 0)

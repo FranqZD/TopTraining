@@ -26,6 +26,20 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    id: '2026.09.01-recap-weeks',
+    dateLabel: '1 sep 2026',
+    title: 'El recap ya no pierde el día',
+    tagline: 'Si el mes cortaba una semana, ese entreno ahora entra.',
+    items: [
+      {
+        icon: 'trophy',
+        title: 'La semana completa',
+        detail:
+          'Un entreno en la semana partida cuenta en el mes de esa semana. El número de arriba y las barras ya dicen lo mismo.',
+      },
+    ],
+  },
+  {
     id: '2026.08.27-pet-life',
     dateLabel: '27 ago 2026',
     title: 'Tu mascota, al día',

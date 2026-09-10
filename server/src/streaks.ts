@@ -197,6 +197,23 @@ export function monthWeeks(month: string): string[] {
   return mondays
 }
 
+/**
+ * Primer lunes y último domingo de las semanas que pertenecen al mes.
+ * Es el rango con el que el recap cuenta entrenos: la semana entera, aunque
+ * se le escapen días al mes calendario.
+ */
+export function monthWeekSpan(month: string): { start: string; end: string } | null {
+  const mondays = monthWeeks(month)
+  if (!mondays.length) return null
+  return { start: mondays[0]!, end: weekDays(mondays[mondays.length - 1]!)[6]! }
+}
+
+/** true cuando ya pasó el domingo de la última semana del mes. */
+export function monthWeeksClosed(month: string, today: string): boolean {
+  const span = monthWeekSpan(month)
+  return span ? span.end < today : monthEnd(month) < today
+}
+
 /** Mes anterior a "YYYY-MM". */
 export function previousMonth(month: string): string {
   const [year, monthNumber] = month.split('-').map(Number)

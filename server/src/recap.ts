@@ -1,5 +1,15 @@
 import { prisma } from './db.js'
-import { longestStreak, monthEnd, monthWeeks, shiftDay, summarizeWeeks, weekDays, weeklyStreak } from './streaks.js'
+import {
+  longestStreak,
+  monthEnd,
+  monthWeeks,
+  monthWeekSpan,
+  monthWeeksClosed,
+  shiftDay,
+  summarizeWeeks,
+  weekDays,
+  weeklyStreak,
+} from './streaks.js'
 
 /**
  * Recap mensual de un grupo.
@@ -22,6 +32,7 @@ export interface RecapMember {
   image: string | null
   /** Meta semanal de esa persona en este grupo (personal o la del grupo). */
   goal: number
+  /** Entrenos de las semanas que pertenecen al mes (lunes a domingo). */
   checkIns: number
   weeksEvaluated: number
   weeksMet: number
@@ -32,9 +43,9 @@ export interface RecapMember {
   /** Apodo del mes. null si no hay nada que decir. */
   title: RecapTitle | null
   /**
-   * Entrenos de cada semana del mes, en orden. Cuenta la semana entera (lunes
-   * a domingo), que es la unidad con la que se mide la meta, aunque se le
-   * escapen días al mes. Las primeras `weeksEvaluated` ya terminaron.
+   * Entrenos de cada semana del mes, en orden. Misma cuenta que `checkIns`:
+   * la semana entera (lunes a domingo), aunque se le escapen días al mes
+   * calendario. Las primeras `weeksEvaluated` ya terminaron.
    */
   weeklyCheckIns: number[]
   /** Auras recibidas en los entrenos de este mes. */
@@ -68,8 +79,8 @@ export interface Recap {
 
 /**
  * Calcula el recap desde los check-ins. Es una función pura respecto de la
- * base: se puede llamar para un mes cerrado (job del día 1) o para el mes en
- * curso (consulta bajo demanda), y la única diferencia es `partial`.
+ * base: se puede llamar para un mes cerrado o para el mes en curso
+ * (consulta bajo demanda), y la única diferencia es `partial`.
  */
 export async function computeRecap(groupId: string, month: string, today: string): Promise<Recap | null> {
   const group = await prisma.group.findUnique({
@@ -79,12 +90,12 @@ export async function computeRecap(groupId: string, month: string, today: string
   if (!group) return null
 
   const from = `${month}-01`
-  const to = monthEnd(month)
-  const partial = today <= to
-  /** Rachas vivas se miran al cierre del mes, no al día de hoy si el mes ya pasó. */
-  const asOf = today <= to ? today : to
-
   const mondays = monthWeeks(month)
+  const span = monthWeekSpan(month) ?? { start: from, end: monthEnd(month) }
+  const partial = !monthWeeksClosed(month, today)
+  /** Rachas vivas se miran al cierre de la última semana, no al día de hoy si ya pasó. */
+  const asOf = today <= span.end ? today : span.end
+
   const memberIds = group.members.map((member) => member.userId)
   const lookback = shiftDay(from, -63)
 
@@ -93,7 +104,7 @@ export async function computeRecap(groupId: string, month: string, today: string
       userId: { in: memberIds },
       // Traemos también los días de las semanas del mes que se van al mes
       // siguiente, y un par de meses atrás para las rachas que cruzan el corte.
-      day: { gte: lookback, lte: mondays.length ? maxDay(to, lastDayOfWeeks(mondays)) : to },
+      day: { gte: lookback, lte: span.end },
     },
     select: { id: true, userId: true, day: true },
   })
@@ -105,7 +116,7 @@ export async function computeRecap(groupId: string, month: string, today: string
     daysByUser.set(checkIn.userId, set)
   }
 
-  const monthCheckIns = checkIns.filter((row) => row.day >= from && row.day <= to)
+  const monthCheckIns = checkIns.filter((row) => row.day >= span.start && row.day <= span.end)
   const votesByUser = await votesReceivedByUser(monthCheckIns)
 
   const drafted = group.members.map((member) => {
@@ -124,11 +135,12 @@ export async function computeRecap(groupId: string, month: string, today: string
       name: member.user.name,
       image: member.user.image,
       goal,
-      // Los entrenos que se cuentan sí son los del mes calendario.
-      checkIns: [...days].filter((day) => day >= from && day <= to).length,
+      // Misma cuenta que las barras: entrenos de las semanas del mes, no del
+      // mes calendario. Un día partido no se queda fuera ni se cuenta dos veces.
+      checkIns: [...days].filter((day) => day >= span.start && day <= span.end).length,
       weeksEvaluated: weeks.length,
       weeksMet: weeks.filter((week) => week.met).length,
-      longestStreak: longestStreak(days, from, to),
+      longestStreak: longestStreak(days, span.start, span.end),
       completion: weeks.length ? weeks.filter((week) => week.met).length / weeks.length : null,
       joinedAt: member.joinedAt.getTime(),
       weekly: weeklyStreak(days, goal, asOf),
@@ -181,14 +193,6 @@ export async function computeRecap(groupId: string, month: string, today: string
     everyoneDelivered,
     generatedAt: new Date().toISOString(),
   }
-}
-
-function lastDayOfWeeks(mondays: string[]): string {
-  return weekDays(mondays[mondays.length - 1]!)[6]!
-}
-
-function maxDay(a: string, b: string): string {
-  return a > b ? a : b
 }
 
 /** Auras y lauras por dueño del check-in. El voto propio no cuenta. */
@@ -275,53 +279,75 @@ function assignTitles(drafted: DraftMember[]): RecapMember[] {
 /**
  * Devuelve el recap guardado o lo calcula.
  *
- * - Mes en curso: siempre se calcula al vuelo (parcial) y no se guarda; si lo
- *   guardáramos quedaría una foto vieja pegada al mes que todavía cambia.
- * - Mes cerrado: se usa el guardado. Si no existe (el job no corrió, el
- *   servidor estaba caído el día 1) se calcula y se guarda ahí mismo.
+ * - Mientras la última semana del mes no haya cerrado (el domingo todavía
+ *   no pasó): se calcula al vuelo y no se guarda. Congelarlo el día 1 dejaría
+ *   fuera los entrenos de esa semana que caen en el mes siguiente.
+ * - Mes cerrado (ya pasó ese domingo): se usa el guardado. Si no existe o se
+ *   congeló demasiado pronto, se calcula y se guarda ahí mismo.
  */
 export async function getRecap(groupId: string, month: string, today: string): Promise<Recap | null> {
-  const closed = month < today.slice(0, 7)
+  const closed = monthWeeksClosed(month, today)
+  const stored = closed
+    ? await prisma.groupRecap.findUnique({ where: { groupId_month: { groupId, month } } })
+    : null
 
-  if (closed) {
-    const stored = await prisma.groupRecap.findUnique({ where: { groupId_month: { groupId, month } } })
-    if (stored) return JSON.parse(stored.data) as Recap
+  if (stored && snapshotCoversMonth(stored.generatedAt, month)) {
+    return JSON.parse(stored.data) as Recap
   }
 
   const recap = await computeRecap(groupId, month, today)
-  if (recap && closed) await storeRecap(groupId, month, recap)
+  if (recap && closed) await storeRecap(groupId, month, recap, { overwrite: Boolean(stored) })
   return recap
 }
 
-async function storeRecap(groupId: string, month: string, recap: Recap): Promise<void> {
+async function storeRecap(
+  groupId: string,
+  month: string,
+  recap: Recap,
+  { overwrite = false }: { overwrite?: boolean } = {},
+): Promise<void> {
   await prisma.groupRecap
     .upsert({
       where: { groupId_month: { groupId, month } },
       create: { groupId, month, data: JSON.stringify(recap) },
-      update: {},
+      update: overwrite ? { data: JSON.stringify(recap), generatedAt: new Date() } : {},
     })
     .catch(() => {})
 }
 
+/** Un snapshot es final si se escribió después de que cerró la última semana. */
+function snapshotCoversMonth(generatedAt: Date, month: string): boolean {
+  const span = monthWeekSpan(month)
+  if (!span) return true
+  return generatedAt.toISOString().slice(0, 10) > span.end
+}
+
 /**
- * Job del día 1: congela el recap del mes que terminó para todos los grupos.
+ * Congela el recap del último mes cuyas semanas ya terminaron.
  *
- * Es idempotente por el índice único (groupId, month), así que correrlo de más
- * no duplica nada. Y como se ejecuta en cada pasada del scheduler, si el
- * servidor estuvo caído el día 1 el recap se genera igual apenas vuelve.
+ * No es el día 1 del mes calendario: si la última semana se pasa al mes
+ * siguiente, espera a que cierre. Es idempotente por el índice único, y si
+ * quedó un snapshot prematuro (de cuando se congelaba el día 1) lo pisa.
  */
 export async function generateClosedRecaps(today: string): Promise<{ generated: number }> {
   const month = previousMonthOf(today)
+  if (!monthWeeksClosed(month, today)) return { generated: 0 }
+
+  const freezeFrom = shiftDay(monthWeekSpan(month)!.end, 1)
   const groups = await prisma.group.findMany({
-    where: { recaps: { none: { month } }, createdAt: { lt: new Date(`${today.slice(0, 7)}-01T00:00:00Z`) } },
-    select: { id: true },
+    where: { createdAt: { lt: new Date(`${today.slice(0, 7)}-01T00:00:00Z`) } },
+    select: { id: true, recaps: { where: { month }, select: { generatedAt: true } } },
+  })
+  const pending = groups.filter((group) => {
+    const recap = group.recaps[0]
+    return !recap || recap.generatedAt.toISOString().slice(0, 10) < freezeFrom
   })
 
   let generated = 0
-  for (const group of groups) {
+  for (const group of pending) {
     const recap = await computeRecap(group.id, month, today)
     if (!recap) continue
-    await storeRecap(group.id, month, recap)
+    await storeRecap(group.id, month, recap, { overwrite: true })
     generated++
   }
   return { generated }

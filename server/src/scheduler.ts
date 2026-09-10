@@ -143,10 +143,10 @@ export async function runNudgeSweep(at = new Date()): Promise<{ checked: number;
  * PUSH_SWEEP_MINUTES y sirve para los dos:
  *
  *  - Recordatorios de entreno (solo si hay claves VAPID).
- *  - Recap mensual: en teoría es "el día 1", pero en vez de atarlo a esa hora
- *    exacta se pregunta en cada pasada si falta el recap del mes cerrado. Sale
- *    igual el día 1, y si el servidor estuvo caído se genera al volver en vez
- *    de perderse el mes.
+ *  - Recap mensual: se congela cuando ya pasó el domingo de la última semana
+ *    del mes (no el día 1, si esa semana se pasa al mes siguiente). Cada
+ *    pasada pregunta si falta ese recap. Si el servidor estuvo caído se
+ *    genera al volver en vez de perderse el mes.
  */
 export function startScheduler(): void {
   const minutes = Math.max(1, Number(process.env.PUSH_SWEEP_MINUTES ?? 10))

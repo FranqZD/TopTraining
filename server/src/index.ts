@@ -198,7 +198,7 @@ if (process.env.NODE_ENV !== 'production') {
     res.json(await runNudgeSweep(Number.isNaN(at.getTime()) ? new Date() : at))
   })
 
-  /** Dispara el job del recap sin esperar al día 1. */
+  /** Dispara el job del recap sin esperar a que cierre la última semana. */
   app.post('/api/recaps/run', requireAuth, async (req, res) => {
     res.json(await generateClosedRecaps(todayFor(req)))
   })

@@ -16,7 +16,7 @@ import {
   Share2,
 } from 'lucide-react'
 import { Avatar, Button, Card, CardLabel, cn } from '../../components/ui'
-import { api, localDay, localMonth, type Recap, type RecapMember, type RecapTitle } from '../../lib/api'
+import { api, localDay, localMonth, weekStart, type Recap, type RecapMember, type RecapTitle } from '../../lib/api'
 import { useProfile } from '../../profile/useProfile'
 
 /**
@@ -37,7 +37,7 @@ export function RecapScreen() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { profile } = useProfile()
-  const [month, setMonth] = useState(localMonth())
+  const [month, setMonth] = useState(() => weekStart(localDay()).slice(0, 7))
   const [recap, setRecap] = useState<Recap | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -46,7 +46,7 @@ export function RecapScreen() {
   useEffect(() => {
     setLoading(true)
     api
-      .get<Recap>(`/groups/${id}/recap?month=${month}`)
+      .get<Recap>(`/groups/${id}/recap?month=${month}&today=${localDay()}`)
       .then(setRecap)
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false))
@@ -292,7 +292,11 @@ function GroupCard({ recap, month }: { recap: Recap; month: string }) {
             recap.partial ? 'bg-accent-tint border-accent-line text-accent' : 'bg-ink-850 border-ink-700 text-ink-300',
           )}
         >
-          {recap.partial ? `En curso · día ${elapsed}` : 'Mes cerrado'}
+          {recap.partial
+            ? month === localMonth()
+              ? `En curso · día ${elapsed}`
+              : 'Última semana en curso'
+            : 'Mes cerrado'}
         </span>
       </div>
 
