@@ -26,6 +26,34 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    id: '2026.09.09-pet-level',
+    dateLabel: '9 sep 2026',
+    title: 'Si fallas, baja un nivel',
+    tagline: 'Tu mascota ya no vuelve a empezar de cero.',
+    items: [
+      {
+        icon: 'paw',
+        title: 'Un fallo, un escalón',
+        detail:
+          'Si se cierra la semana sin tu meta, baja un nivel y se ve triste. Cumple la siguiente y vuelve a subir.',
+      },
+    ],
+  },
+  {
+    id: '2026.09.09-pet-poke',
+    dateLabel: '9 sep 2026',
+    title: 'Toca tu mascota',
+    tagline: 'Reacciona cuando la tocas. Cada una a su manera.',
+    items: [
+      {
+        icon: 'paw',
+        title: 'Un toque, una reacción',
+        detail:
+          'Si está al día, se anima. Si no marcaste, responde igual, más floja. Puedes volver a tocarla en mitad del movimiento.',
+      },
+    ],
+  },
+  {
     id: '2026.09.01-recap-weeks',
     dateLabel: '1 sep 2026',
     title: 'El recap ya no pierde el día',

@@ -151,7 +151,7 @@ export interface Streaks {
   goal: number
 }
 
-/** Evolución 0–5. Semanas consecutivas cumpliendo la meta. Si fallas, vuelve a 0. */
+/** Evolución 0–5. Cada semana cumplida sube uno; si fallas, baja uno. */
 export type PetStage = 0 | 1 | 2 | 3 | 4 | 5
 
 /** `ok` si ya marcaste hoy, `skip1` si no. `broken` si no llegaste a la meta. */

@@ -110,9 +110,20 @@ check(
   'broken',
 )
 check(
-  'cumplió una y la siguiente se cayó: vuelve a 0',
+  'cumplió una y la siguiente se cayó: baja a 0',
   computePet([...twoWeeksAgo, '2026-08-10', '2026-08-11'], goal, today).stage,
   0,
+)
+const fourWeeks = fiveWeeks.filter((day) => day < '2026-08-10')
+check(
+  'cuatro semanas y falla la quinta: baja a 3, no a 0',
+  computePet([...fourWeeks, '2026-08-10', '2026-08-11'], goal, today).stage,
+  3,
+)
+check(
+  'cinco semanas y falla la sexta: baja a 4',
+  computePet([...sixWeeks.filter((day) => day < '2026-08-10'), '2026-08-10', '2026-08-11'], goal, today).stage,
+  4,
 )
 check(
   'fallecida gana aunque hayas marcado hoy',

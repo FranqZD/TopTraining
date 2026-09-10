@@ -6,7 +6,7 @@ import { Pet, SPECIES, SPECIES_NAMES, type PetHealth } from './Pet'
 
 /**
  * Hueco de la mascota en Inicio. Si no hay una elegida, invita a escoger.
- * El nivel es semanas consecutivas cumpliendo la meta (1 a 5). Si fallas, 1.
+ * El nivel sube con cada semana cumplida (1 a 5). Si fallas una, baja uno.
  *
  * `ready` es false mientras no sabemos si ya adoptó: no se pinta el CTA, para
  * que un recarga no deje “Escoge tu mascota” un instante encima de la real.
@@ -22,7 +22,7 @@ export function PetHome({
 }) {
   const [open, setOpen] = useState(false)
   const adopted = Boolean(pet?.species && pet.name)
-  const level = pet?.mood === 'broken' ? 1 : displayLevel(pet?.stage)
+  const level = displayLevel(pet?.stage)
   const health = toHealth(pet?.mood)
 
   useEffect(() => {
@@ -32,10 +32,15 @@ export function PetHome({
   return (
     <section aria-label="Tu mascota" className="flex-1 min-h-0 flex flex-col gap-2">
       <CardLabel className="mb-0">{adopted ? pet!.name : 'Tu mascota'}</CardLabel>
-      <div className="flex-1 min-h-0 rounded-[var(--radius-lg)] bg-surface border border-line-soft overflow-hidden flex flex-col">
+      <div
+        className={cn(
+          'flex-1 min-h-0 rounded-[var(--radius-lg)] bg-surface border border-line-soft flex flex-col',
+          adopted ? 'overflow-visible' : 'overflow-hidden',
+        )}
+      >
         {adopted ? (
           <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-1 px-3 py-2">
-            <div className="flex-1 min-h-0 grid place-items-center w-full">
+            <div className="flex-1 min-h-0 grid place-items-center w-full overflow-visible">
               <Pet
                 species={pet!.species!}
                 level={level}
@@ -58,7 +63,7 @@ export function PetHome({
           >
             <span className="flex items-end justify-center gap-1">
               {SPECIES.map((species) => (
-                <Pet key={species} species={species} level={1} health="ok" size={40} paused />
+                <Pet key={species} species={species} level={1} health="ok" size={40} paused interactive={false} />
               ))}
             </span>
             <span className="flex items-center gap-1.5 text-accent">
@@ -133,7 +138,7 @@ function AdoptSheet({
                   selected ? 'bg-accent-tint border-accent-line' : 'bg-ink-850 border-ink-700 hover:border-ink-600',
                 )}
               >
-                <Pet species={option} level={1} health="ok" size={48} paused={!selected} />
+                <Pet species={option} level={1} health="ok" size={48} paused={!selected} interactive={false} />
                 <span className="tape text-micro">{SPECIES_NAMES[option]}</span>
               </button>
             )
@@ -169,7 +174,7 @@ function displayLevel(stage?: PetStage): number {
 function toHealth(mood?: PetMood): PetHealth {
   if (mood === 'skip1') return 'day1'
   if (mood === 'skip2') return 'days3'
-  if (mood === 'broken') return 'dormant'
+  if (mood === 'broken') return 'day1'
   return 'ok'
 }
 

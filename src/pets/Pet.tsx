@@ -1,10 +1,11 @@
 /**
  * Mascotas en SVG animado. Cinco especies, cinco niveles, cuatro ánimos.
  * `day1` es el triste del mismo nivel: misma silueta y tamaño, color caído.
+ * Al tocarla reacciona una vez (`interactive`, true por defecto).
  *
  *   <Pet species="bonsai" level={4} health="ok" size={120} />
  */
-import type { SVGProps } from 'react'
+import { useState, type KeyboardEvent, type SVGProps } from 'react'
 import './pets.css'
 
 type Anim = {
@@ -59,6 +60,89 @@ export const HEALTH_NAMES: Record<PetHealth, string> = {
 export function petLabel(species: PetSpecies, level: number, health: PetHealth): string {
   const base = LEVEL_NAMES[species]?.[Math.min(Math.max(level, 1), 5) - 1] ?? ''
   return health === 'ok' ? base : base + ' · ' + HEALTH_NAMES[health]
+}
+
+type PokePair = [string, number]
+type PokeSet = { ok: PokePair[]; day1: PokePair; days3: PokePair; dormant: PokePair }
+
+const POKE: Record<PetSpecies, PokeSet> = {
+  bird: {
+    ok: [['peck', 420], ['hopSmall', 470], ['hop', 540], ['flutter', 660], ['spin', 780]],
+    day1: ['peep', 900],
+    days3: ['ruffle', 620],
+    dormant: ['stir', 1100],
+  },
+  blob: {
+    ok: [['squish', 400], ['jiggle', 460], ['boing', 520], ['splat', 600], ['roll', 760]],
+    day1: ['slump', 900],
+    days3: ['ripple', 760],
+    dormant: ['shellTap', 950],
+  },
+  gem: {
+    ok: [['chime', 420], ['ring', 480], ['pivot', 540], ['vault', 660], ['prism', 820]],
+    day1: ['dim', 950],
+    days3: ['rattle', 640],
+    dormant: ['hover', 1200],
+  },
+  plant: {
+    ok: [['nod', 420], ['bend', 480], ['spring', 560], ['rustle', 640], ['bloom', 760]],
+    day1: ['limp', 1000],
+    days3: ['crumble', 820],
+    dormant: ['wake', 1100],
+  },
+  bonsai: {
+    ok: [['creak', 480], ['lean', 540], ['quiver', 600], ['gust', 700], ['flourish', 860]],
+    day1: ['sigh', 1100],
+    days3: ['snap', 780],
+    dormant: ['breath', 1300],
+  },
+}
+const POKE_DEFAULT: PokePair = ['nudge', 520]
+
+/** Nombre y duración de la reacción de un estado concreto. */
+export function pokeAnim(species: PetSpecies, level: number, health: PetHealth): PokePair {
+  const set = POKE[species]
+  if (!set) return POKE_DEFAULT
+  const entry = health === 'ok' ? set.ok[Math.min(Math.max(level, 1), 5) - 1] : set[health]
+  return entry ?? POKE_DEFAULT
+}
+
+export type PetPoke = {
+  species: PetSpecies
+  level: number
+  health: PetHealth
+  animation: string
+}
+
+function Burst({ health }: { health: PetHealth }) {
+  if (health === 'ok') {
+    return (
+      <g className="p-burst-spark" style={{ transformOrigin: '50px 46px', transformBox: 'view-box' }} stroke="var(--pet-accent)" strokeWidth="2.5" fill="none">
+        <path d="M16 32l-8-5M84 32l8-5M50 6V0M28 16l-4-8M72 16l4-8" />
+      </g>
+    )
+  }
+  if (health === 'day1') {
+    return (
+      <g className="p-burst-drop" style={{ transformOrigin: '70px 30px', transformBox: 'view-box' }}>
+        <circle cx="70" cy="30" r="3" fill="var(--pet-mute)" />
+      </g>
+    )
+  }
+  if (health === 'days3') {
+    return (
+      <g className="p-burst-dust" style={{ transformOrigin: '50px 84px', transformBox: 'view-box' }} fill="var(--pet-mute-2)">
+        <rect x="22" y="80" width="9" height="4" />
+        <rect x="69" y="80" width="9" height="4" />
+        <rect x="44" y="76" width="7" height="3" />
+      </g>
+    )
+  }
+  return (
+    <g className="p-burst-z" style={{ transformOrigin: '74px 34px', transformBox: 'view-box' }} stroke="var(--pet-accent)" strokeWidth="2.5" fill="none">
+      <path d="M70 26h9l-9 10h9" />
+    </g>
+  )
 }
 
 function Blob({ level, health }: { level: number; health: PetHealth }) {
@@ -165,6 +249,8 @@ export function Pet({
   health = 'ok',
   size = 96,
   paused = false,
+  interactive = true,
+  onPoke,
   className = '',
   title,
   ...rest
@@ -174,29 +260,60 @@ export function Pet({
   health?: PetHealth
   size?: number
   paused?: boolean
+  /** Al tocarla reacciona una vez. Apágalo si ya vive dentro de otro botón. */
+  interactive?: boolean
+  onPoke?: (info: PetPoke) => void
   className?: string
   title?: string
 } & Omit<SVGProps<SVGSVGElement>, 'children'>) {
+  const [pokes, setPokes] = useState(0)
   const Art = ART[species] ?? Blob
   const lvl = Math.min(Math.max(Math.round(level), 1), 5)
   const label = title ?? petLabel(species, lvl, health)
+  const [anim, ms] = pokeAnim(species, lvl, health)
+
+  const poke = () => {
+    if (!interactive || paused) return
+    setPokes((n) => n + 1)
+    onPoke?.({ species, level: lvl, health, animation: anim })
+  }
+  const onKeyDown = (event: KeyboardEvent<SVGSVGElement>) => {
+    rest.onKeyDown?.(event)
+    if (event.defaultPrevented) return
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      poke()
+    }
+  }
+
   return (
     <svg
       viewBox="0 0 100 100"
       width={size}
       height={size}
-      role="img"
-      aria-label={label}
+      {...rest}
+      role={interactive ? 'button' : 'img'}
+      aria-label={interactive ? `${label} · tócala` : label}
+      tabIndex={interactive ? 0 : undefined}
+      onClick={interactive ? poke : rest.onClick}
+      onKeyDown={interactive ? onKeyDown : rest.onKeyDown}
       data-paused={paused ? 'true' : 'false'}
+      data-interactive={interactive ? 'true' : 'false'}
       data-species={species}
       data-level={lvl}
       data-health={health}
       className={('pet ' + className).trim()}
-      {...rest}
     >
       <title>{label}</title>
       <rect x="10" y="90" width="80" height="2" fill="var(--pet-mute-2)" />
-      <Art level={lvl} health={health} />
+      <g
+        key={pokes}
+        className={pokes ? 'p-poke-' + anim : undefined}
+        style={pokes ? { animationDuration: ms + 'ms', transformOrigin: '50px 90px', transformBox: 'view-box' } : undefined}
+      >
+        <Art level={lvl} health={health} />
+      </g>
+      {pokes > 0 ? <Burst key={'b' + pokes} health={health} /> : null}
     </svg>
   )
 }
