@@ -1,8 +1,9 @@
 /**
- * Notas de cada parche. La id es lo que se guarda en el dispositivo: si el
- * usuario no la vio, la pantalla de "hay de nuevo" se abre sola.
+ * Notas de features (y de cambios que reescriben cómo se usa algo).
+ * La id es lo que se guarda en el dispositivo: si el usuario no la vio,
+ * la pantalla de "hay de nuevo" se abre sola. Los fixes no van acá.
  *
- * Orden: lo más nuevo primero. Para un parche nuevo, copia un bloque arriba
+ * Orden: lo más nuevo primero. Feature nuevo: copia un bloque arriba
  * con una id que no se haya usado (la fecha alcanza; el mismo día, un sufijo).
  * Checklist: DESIGN_SYSTEM.md §10.
  */

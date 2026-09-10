@@ -226,9 +226,10 @@ No hay paso 3. Ningún componente se toca.
 6. **La voz también es sistema:** títulos directos y en segunda persona; el
    humor va en la bajada o en el hint, nunca en botones de acción destructiva.
 7. **Números siempre con `.num`.** Un número de racha en fuente de cuerpo se ve mal.
-8. **Parche visible, nota del parche.** Si quien ya usa la app va a ver algo
-   nuevo, hay un bloque arriba de `RELEASES` en `src/whats-new/releases.ts`.
-   Sin eso, la pantalla de "hay de nuevo" no se abre. Ver §10.
+8. **Feature nuevo o cambio grande, nota del parche.** Un feature, o algo
+   que cambia de verdad cómo se usa la app, lleva un bloque arriba de
+   `RELEASES` en `src/whats-new/releases.ts`. Un fix o pulido, no: esa
+   pantalla no es un changelog. Ver §10.
 9. **Si le pasa a otra persona, se avisa — o se decide que no.** Un hecho
    social (entreno, comentario, voto, solicitud) sale por `notify.ts` con
    `kind`, interruptor en Ajustes y `fireAndForget` después de responder.
@@ -298,7 +299,7 @@ Referencia de que el sistema aguanta pantallas reales:
 
 Esto no es visual. Si se salta, quien ya usa la app no se entera, o se
 entera por un push que no pidió. **Cerrar una feature es: código + nota del
-parche + (avisar o declarar que no).**
+parche + (avisar o declarar que no).** Un fix se cierra sin nota.
 
 ### 11.1 Notas del parche
 
@@ -307,11 +308,12 @@ Catálogo: `src/whats-new/releases.ts`. Visto: `localStorage` clave
 `WhatsNewScreen`. Se abre sola desde `RequireAuth` si hay ids más nuevas
 que la guardada.
 
-**Cuándo sí:** cambio que se ve o se siente (pantalla, feed, voto, foto,
-post, recap, aviso). Un toque, un número, un texto nuevo.
+**Cuándo sí:** feature nuevo, o un cambio que reescribe cómo funciona algo
+que ya existía (otra regla, otra pantalla, otro flujo). Quien ya usa la
+app tiene que enterarse.
 
-**Cuándo no:** refactor, schema interno, seed, cosa que el usuario no
-puede percibir.
+**Cuándo no:** bug, pulido (foco, un px, un copy), refactor, schema
+interno, seed. `/whats-new` no es un changelog de ingeniería.
 
 Pasos:
 

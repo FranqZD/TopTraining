@@ -1,22 +1,22 @@
 ---
-description: Al cerrar una feature, nota del parche y notificación (o declarar que no avisa).
+description: Al cerrar una feature: nota del parche si es feature o cambio grande; los fixes no van al log.
 alwaysApply: true
 ---
 
 # Cerrar una feature
 
-Detalle en `DESIGN_SYSTEM.md` §10. Sin esto, quien ya usa la app no se entera o recibe un push que no pidió.
+Detalle en `DESIGN_SYSTEM.md` §10. Feature o cambio grande de producto: nota en el log. Fix: no. Hecho social: avisar o declarar que no.
 
 ## Notas del parche
 
-Si el cambio se ve o se siente, copia un bloque **arriba** de `RELEASES` en `src/whats-new/releases.ts`.
+Solo si es un **feature nuevo** o cambia de verdad cómo se usa algo (otra regla, otra pantalla, otro flujo). Copia un bloque **arriba** de `RELEASES` en `src/whats-new/releases.ts`.
 
 - `id` nueva (fecha; el mismo día, un sufijo).
 - Voz de producto, segunda persona. No es un changelog de ingeniería.
 - Ícono nuevo: `ReleaseIcon` **y** el mapa `ICONS` de `WhatsNewScreen`.
 - No toques `seen.ts`. El onboarding ya marca todo visto.
 
-No hace falta nota en refactors, schema interno o seeds.
+**Sin nota:** bugs, pulido (anillo de foco, un px, un copy), refactors, schema interno, seeds. Quien ya usa la app no tiene que enterarse de un arreglo.
 
 ## Notificaciones
 

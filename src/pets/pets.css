@@ -69,7 +69,8 @@
    Un disparo, no bucle. Se activan remontando el <g> (key = nº de toque). */
 
 .pet[data-interactive="true"] { cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.pet[data-interactive="true"]:focus-visible { outline: 2px solid var(--pet-accent); outline-offset: 2px; }
+.pet:focus,
+.pet:focus-visible { outline: none; }
 
 .pet [class^="p-poke-"], .pet [class^="p-burst-"] {
   animation-iteration-count: 1;

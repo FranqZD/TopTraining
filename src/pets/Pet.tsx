@@ -5,7 +5,7 @@
  *
  *   <Pet species="bonsai" level={4} health="ok" size={120} />
  */
-import { useState, type KeyboardEvent, type SVGProps } from 'react'
+import { useState, type KeyboardEvent, type MouseEvent, type SVGProps } from 'react'
 import './pets.css'
 
 type Anim = {
@@ -285,6 +285,11 @@ export function Pet({
       poke()
     }
   }
+  const onMouseDown = (event: MouseEvent<SVGSVGElement>) => {
+    rest.onMouseDown?.(event)
+    if (event.defaultPrevented || !interactive) return
+    event.preventDefault()
+  }
 
   return (
     <svg
@@ -295,8 +300,16 @@ export function Pet({
       role={interactive ? 'button' : 'img'}
       aria-label={interactive ? `${label} · tócala` : label}
       tabIndex={interactive ? 0 : undefined}
-      onClick={interactive ? poke : rest.onClick}
+      onClick={
+        interactive
+          ? (event) => {
+              poke()
+              event.currentTarget.blur()
+            }
+          : rest.onClick
+      }
       onKeyDown={interactive ? onKeyDown : rest.onKeyDown}
+      onMouseDown={interactive ? onMouseDown : rest.onMouseDown}
       data-paused={paused ? 'true' : 'false'}
       data-interactive={interactive ? 'true' : 'false'}
       data-species={species}
